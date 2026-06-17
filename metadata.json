@@ -1,0 +1,7 @@
+{
+  "name": "Remix: เว็บ KSP Panyanukun v.5 วันที่ 110669",
+  "description": "เว็บไซต์อย่างเป็นทางการของโรงเรียนกาฬสินธุ์ปัญญานุกูล จังหวัดกาฬสินธุ์",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

@@ -1,0 +1,3 @@
+# ใช้สำหรับ wrangler pages dev เท่านั้น (ไม่ commit ค่าจริง)
+GAS_WEB_APP_URL=""
+GAS_SECRET=""

@@ -1,0 +1,132 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700;800&family=Kanit:wght@300;400;500;600;700;800&family=Prompt:wght@300;400;500;600;700;800&family=Mitr:wght@300;400;500;600;700;800&family=Chakra+Petch:wght@300;400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Montserrat:wght@100;200;300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --font-sans: "Sarabun", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", serif;
+  --font-display: "Montserrat", sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { transform: scale(1.05); }
+  50% { transform: scale(1.1); }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 15s ease-in-out infinite;
+}
+
+/* Quill Indentation & Alignment Styles */
+.ql-indent-1 { padding-left: 3em; }
+.ql-indent-2 { padding-left: 6em; }
+.ql-indent-3 { padding-left: 9em; }
+.ql-indent-4 { padding-left: 12em; }
+.ql-indent-5 { padding-left: 15em; }
+.ql-indent-6 { padding-left: 18em; }
+.ql-indent-7 { padding-left: 21em; }
+.ql-indent-8 { padding-left: 24em; }
+
+.ql-align-center { text-align: center; }
+.ql-align-right { text-align: right; }
+.ql-align-justify { text-align: justify; }
+
+.ql-size-small { font-size: 0.75em; }
+.ql-size-large { font-size: 1.5em; }
+.ql-size-huge { font-size: 2.5em; }
+
+.ql-editor-custom p, .prose p {
+  margin-bottom: 1.5em;
+  text-indent: 0;
+  line-height: inherit;
+  white-space: pre-wrap;
+}
+
+.ql-editor-custom .ql-indent-1, .prose .ql-indent-1 { padding-left: 3rem !important; }
+.ql-editor-custom .ql-indent-2, .prose .ql-indent-2 { padding-left: 6rem !important; }
+.ql-editor-custom .ql-indent-3, .prose .ql-indent-3 { padding-left: 9rem !important; }
+.ql-editor-custom .ql-indent-4, .prose .ql-indent-4 { padding-left: 12rem !important; }
+.ql-editor-custom .ql-indent-5, .prose .ql-indent-5 { padding-left: 15rem !important; }
+.ql-editor-custom .ql-align-center, .prose .ql-align-center { text-align: center !important; }
+.ql-editor-custom .ql-align-right, .prose .ql-align-right { text-align: right !important; }
+.ql-editor-custom .ql-align-justify, .prose .ql-align-justify { text-align: justify !important; }
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #818cf8;
+}
+
+/* Quill Custom Fonts */
+.ql-font-sarabun { font-family: 'Sarabun', sans-serif; }
+.ql-font-kanit { font-family: 'Kanit', sans-serif; }
+.ql-font-prompt { font-family: 'Prompt', sans-serif; }
+.ql-font-mitr { font-family: 'Mitr', sans-serif; }
+.ql-font-chakra-petch { font-family: 'Chakra Petch', sans-serif; }
+.ql-font-montserrat { font-family: 'Montserrat', sans-serif; }
+.ql-font-inter { font-family: 'Inter', sans-serif; }
+
+/* Wysiwyg Editor Overrides */
+.wysiwyg-editor .ql-container {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.wysiwyg-editor .ql-editor {
+  min-height: 400px;
+  padding: 2rem;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: normal;
+}
+
+.wysiwyg-editor .ql-editor p {
+  margin-bottom: 1em;
+}
+
+.wysiwyg-editor .ql-editor ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 1em;
+}
+
+.wysiwyg-editor .ql-editor ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 1em;
+}
+
+/* Parent-driven styling for Quill editor */
+.quill-text-sm .ql-editor { font-size: 0.875rem !important; }
+.quill-text-md .ql-editor { font-size: 1rem !important; }
+.quill-text-lg .ql-editor { font-size: 1.25rem !important; }
+
+.quill-leading-tight .ql-editor { line-height: 1.25 !important; }
+.quill-leading-normal .ql-editor { line-height: 1.5 !important; }
+.quill-leading-relaxed .ql-editor { line-height: 1.75 !important; }
+
+.wysiwyg-editor .ql-toolbar.ql-snow {
+  display: none !important; /* We use a custom toolbar */
+}
+
+.wysiwyg-editor .ql-container.ql-snow {
+  border: none !important;
+}
