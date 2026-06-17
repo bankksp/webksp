@@ -14,8 +14,8 @@
  * - https://www.googleapis.com/auth/spreadsheets
  */
 
-const SECRET = "KSP_PANYA_SECRET_2026"; // IMPORTANT: Change this to a strong, unique secret and update Vercel environment variables.
-const FOLDER_ID = ""; // Optional: ID of Google Drive folder to store uploads. If empty, uses root.
+const SECRET = "KSP_PANYA_SECRET_2026";
+const FOLDER_ID = "17ZSTF_q9yal63BK1UdALLsh7MfYlNUdK";
 
 /**
  * SECURITY NOTE:

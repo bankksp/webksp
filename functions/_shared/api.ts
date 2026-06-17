@@ -9,18 +9,22 @@ export function handleHealthCheck(): Response {
   });
 }
 
+function apiError(message: string, status = 400, extra: Record<string, unknown> = {}) {
+  return Response.json({ error: message, ...extra }, { status });
+}
+
 export async function handleApiRequest(
   request: Request,
   env: CloudflareEnv,
 ): Promise<Response> {
-  const { gasSecret } = getGasConfig(env);
+  const { gasSecret, gasUrl } = getGasConfig(env);
   let params: Record<string, unknown> = {};
 
   if (request.method === 'POST') {
     try {
       params = (await request.json()) as Record<string, unknown>;
     } catch {
-      params = {};
+      return apiError('Invalid JSON body', 400);
     }
   } else {
     const url = new URL(request.url);
@@ -34,47 +38,61 @@ export async function handleApiRequest(
   if (!sheet && !action && request.method === 'GET') {
     return Response.json({
       message: 'API is alive. Use POST with sheet and action.',
+      gasUrl: gasUrl.substring(0, 60) + '...',
       time: new Date().toISOString(),
     });
   }
 
+  if (!action) {
+    return apiError('Missing action parameter');
+  }
+
   const effectiveSecret = (params.secret as string) || gasSecret || '';
+  if (!effectiveSecret) {
+    return apiError('Server misconfigured: GAS_SECRET is not set', 500);
+  }
 
   try {
     const bodyToPass = {
       ...params,
       secret: effectiveSecret,
-      action: action || 'read',
     };
 
     const response = await fetchFromGAS(env, bodyToPass);
 
     if (!response.ok) {
       const text = await response.text();
-      return Response.json(
-        { error: 'GAS Proxy Error', status: response.status, details: text },
-        { status: response.status },
+      return apiError('GAS Proxy Error', response.status, { details: text.substring(0, 300) });
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    const raw = await response.text();
+
+    if (contentType.includes('text/html') || raw.trimStart().startsWith('<')) {
+      return apiError(
+        'Google Apps Script returned HTML. Redeploy Web App as "Anyone" and verify GAS URL.',
+        502,
+        { details: raw.substring(0, 200) },
       );
     }
 
-    const contentType = response.headers.get('content-type');
-    if (contentType?.includes('text/html')) {
-      const htmlText = await response.text();
-      return Response.json(
-        {
-          error: 'GAS Logic Error',
-          message:
-            'Google Apps Script returned an HTML page. Please verify the URL and deployment settings (Must be deployed as "Anyone").',
-          details: htmlText.substring(0, 200),
-        },
-        { status: 500 },
-      );
+    let data: Record<string, unknown>;
+    try {
+      data = JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      return apiError('Invalid JSON from Google Apps Script', 502, { details: raw.substring(0, 200) });
     }
 
-    const data = await response.json();
+    // Some legacy GAS scripts return { status: 'error', message: '...' }
+    if (data.status === 'error' && data.message) {
+      return apiError(String(data.message), 400, {
+        hint: 'GAS URL may point to wrong Apps Script. Deploy code.gs from this repo.',
+      });
+    }
+
     return Response.json(data);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    return Response.json({ error: 'Internal Server Error', message }, { status: 500 });
+    return apiError('Internal Server Error', 500, { message });
   }
 }

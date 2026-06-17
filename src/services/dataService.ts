@@ -1,9 +1,9 @@
 import { toast } from 'sonner';
 import * as bcrypt from 'bcryptjs';
 import { Staff, Post, Executive, InfoDocument } from '../types';
+import { API_URL } from '../config';
 
-// --- Configuration (Proxy via Express) ---
-const API_URL = "/api/data";
+// --- Configuration (Proxy via Cloudflare Worker) ---
 
 // --- Auth State Management ---
 const AUTH_KEY = 'ksp_panya_user';
@@ -95,13 +95,14 @@ async function fetchAPI(params: any) {
         throw new Error(`รูปแบบข้อมูลไม่ถูกต้องจากเซิร์ฟเวอร์: ${e.message}`);
       }
       
-      if (data.error) {
+      if (data.error || data.status === 'error') {
+        const msg = data.error || data.message || data.hint || 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์';
         // Logical errors should not be retried
         const logicalErrors = ['Not found', 'Record not found', 'User already exists', 'Invalid password', 'Unauthorized'];
-        if (logicalErrors.some(err => data.error.includes(err))) {
-          throw new Error(data.error);
+        if (logicalErrors.some(err => String(msg).includes(err))) {
+          throw new Error(String(msg));
         }
-        throw new Error(data.error);
+        throw new Error(String(msg));
       }
 
       // Clear cache on write operations
