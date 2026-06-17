@@ -1,15 +1,17 @@
 # webksp — โรงเรียนกาฬสินธุ์ปัญญานุกูล
 
-เว็บไซต์โรงเรียนกาฬสินธุ์ปัญญานุกูล พัฒนาด้วย React + Vite และ deploy บน **Cloudflare Pages** (เชื่อม GitHub อัตโนมัติ)
+เว็บไซต์โรงเรียนกาฬสินธุ์ปัญญานุกูล — **https://ksp.ac.th**  
+พัฒนาด้วย React + Vite และ deploy บน **Cloudflare Workers** (เชื่อม GitHub อัตโนมัติ)
 
 ## สถาปัตยกรรม
 
 | ส่วน | เทคโนโลยี |
 |------|-----------|
 | Frontend | React 19 + Vite + Tailwind CSS |
-| API Proxy | Cloudflare Pages Functions (`/functions`) |
+| API + SEO | Cloudflare Worker (`worker/index.ts`) |
 | ฐานข้อมูล | Google Sheets ผ่าน Google Apps Script |
-| Deploy | Cloudflare Pages + GitHub |
+| Deploy | Cloudflare Workers + GitHub |
+| โดเมนหลัก | **ksp.ac.th** (www → redirect ไป ksp.ac.th) |
 
 ## การเตรียม Google Apps Script
 
@@ -32,11 +34,24 @@ cp .env.example .env
 
 | ตัวแปร | ใช้เมื่อ | คำอธิบาย |
 |--------|---------|----------|
+| `VITE_APP_URL` | Build | `https://ksp.ac.th` |
 | `VITE_GAS_WEB_APP_URL` | Build | URL จาก Apps Script |
 | `VITE_GAS_SECRET` | Build | Secret สำหรับ client |
 | `VITE_ADMIN_EMAIL` | Build | อีเมล admin |
+| `CANONICAL_URL` | Runtime | `https://ksp.ac.th` |
 | `GAS_WEB_APP_URL` | Runtime | URL สำหรับ API/SEO บน edge |
 | `GAS_SECRET` | Runtime | Secret สำหรับ API/SEO บน edge |
+
+## โดเมน ksp.ac.th
+
+โดเมนหลักตั้งค่าใน `wrangler.toml` แล้ว — deploy จะผูก Worker กับ `ksp.ac.th` และ `www.ksp.ac.th` อัตโนมัติ
+
+**เงื่อนไข:** โดเมน `ksp.ac.th` ต้องอยู่ใน Cloudflare account เดียวกับ Worker
+
+1. เข้า [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Websites** → ตรวจว่ามี zone `ksp.ac.th`
+2. ถ้ายังไม่มี → **Add a site** → ใส่ `ksp.ac.th` → เปลี่ยน nameserver ตามที่ Cloudflare แจ้ง
+3. Deploy โปรเจกต์ (push ขึ้น GitHub) → Cloudflare สร้าง DNS record ให้อัตโนมัติ
+4. `www.ksp.ac.th` จะ redirect 301 ไป `https://ksp.ac.th` โดย Worker
 
 ## พัฒนาในเครื่อง
 

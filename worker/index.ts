@@ -1,6 +1,7 @@
 import { handleApiRequest, handleHealthCheck } from '../functions/_shared/api';
-import { getMetaData, injectMetaTags } from '../functions/_shared/seo';
+import { getCanonicalOrigin } from '../functions/_shared/env';
 import type { CloudflareEnv } from '../functions/_shared/env';
+import { getMetaData, injectMetaTags } from '../functions/_shared/seo';
 
 const STATIC_FILE = /\.(png|jpg|jpeg|gif|svg|webp|ico|css|js|map|txt|json|woff2?|eot|ttf|pdf)$/i;
 
@@ -11,6 +12,11 @@ export interface Env extends CloudflareEnv {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    const canonicalOrigin = getCanonicalOrigin(env);
+
+    if (url.hostname === 'www.ksp.ac.th') {
+      return Response.redirect(`${canonicalOrigin}${url.pathname}${url.search}`, 301);
+    }
 
     if (url.pathname.startsWith('/api')) {
       if (url.pathname === '/api/health' && request.method === 'GET') {
@@ -51,7 +57,7 @@ export default {
             ? 'article'
             : 'website',
       },
-      url.origin,
+      canonicalOrigin,
     );
 
     return new Response(html, {

@@ -26,6 +26,7 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
+          VITE_APP_URL: https://ksp.ac.th
           VITE_GAS_WEB_APP_URL: ${{ secrets.VITE_GAS_WEB_APP_URL }}
           VITE_GAS_SECRET: ${{ secrets.VITE_GAS_SECRET }}
           VITE_ADMIN_EMAIL: ${{ secrets.VITE_ADMIN_EMAIL }}

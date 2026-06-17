@@ -3,8 +3,12 @@ export interface CloudflareEnv {
   GAS_SECRET?: string;
   VITE_GAS_WEB_APP_URL?: string;
   VITE_GAS_SECRET?: string;
+  CANONICAL_URL?: string;
+  VITE_APP_URL?: string;
   ASSETS?: { fetch: typeof fetch };
 }
+
+export const SITE_URL = 'https://ksp.ac.th';
 
 const DEFAULT_GAS_URL =
   'https://script.google.com/macros/s/AKfycbx1RpY1-wuslTse_CIDomMq_gOaPp3wgEhTdbXoMq7WMYaY3Zzo4jBlfYEyVNC_TIVmdw/exec';
@@ -16,4 +20,8 @@ export function getGasConfig(env: CloudflareEnv) {
     gasUrl: env.GAS_WEB_APP_URL || env.VITE_GAS_WEB_APP_URL || DEFAULT_GAS_URL,
     gasSecret: env.GAS_SECRET || env.VITE_GAS_SECRET || DEFAULT_GAS_SECRET,
   };
+}
+
+export function getCanonicalOrigin(env: CloudflareEnv): string {
+  return (env.CANONICAL_URL || env.VITE_APP_URL || SITE_URL).replace(/\/$/, '');
 }

@@ -2,6 +2,11 @@ name = "webksp"
 main = "worker/index.ts"
 compatibility_date = "2024-09-23"
 
+routes = [
+  { pattern = "ksp.ac.th", custom_domain = true },
+  { pattern = "www.ksp.ac.th", custom_domain = true },
+]
+
 [assets]
 directory = "./dist"
 binding = "ASSETS"
@@ -11,10 +16,12 @@ not_found_handling = "single-page-application"
 # Workers & Pages > webksp > Settings > Variables and Secrets
 #
 # Build-time (Vite):
+#   VITE_APP_URL=https://ksp.ac.th
 #   VITE_GAS_WEB_APP_URL
 #   VITE_GAS_SECRET
 #   VITE_ADMIN_EMAIL
 #
 # Runtime (Worker):
+#   CANONICAL_URL=https://ksp.ac.th
 #   GAS_WEB_APP_URL
 #   GAS_SECRET
