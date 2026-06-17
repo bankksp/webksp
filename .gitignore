@@ -8,4 +8,5 @@ coverage/
 !.env.example
 .wrangler/
 .dev.vars
+.tools/
 tsconfig.tsbuildinfo
