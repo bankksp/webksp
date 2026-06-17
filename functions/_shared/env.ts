@@ -11,7 +11,7 @@ export interface CloudflareEnv {
 export const SITE_URL = 'https://ksp.ac.th';
 
 const DEFAULT_GAS_URL =
-  'https://script.google.com/macros/s/AKfycbx1RpY1-wuslTse_CIDomMq_gOaPp3wgEhTdbXoMq7WMYaY3Zzo4jBlfYEyVNC_TIVmdw/exec';
+  'https://script.google.com/macros/s/AKfycbzPULly51wnfwG5MgS2VItYEt9Olp1RXBUmdSk8yvsgMViMr5u4iTNVZ6BlNcAheen9CA/exec';
 
 const DEFAULT_GAS_SECRET = 'KSP_PANYA_SECRET_2026';
 
