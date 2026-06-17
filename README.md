@@ -44,14 +44,14 @@ cp .env.example .env
 
 ## โดเมน ksp.ac.th
 
-โดเมนหลักตั้งค่าใน `wrangler.toml` แล้ว — deploy จะผูก Worker กับ `ksp.ac.th` และ `www.ksp.ac.th` อัตโนมัติ
+**สำคัญ:** หลัง deploy สำเร็จแล้ว ค่อยเพิ่มโดเมนใน Dashboard (ไม่ใส่ใน wrangler.toml)
 
-**เงื่อนไข:** โดเมน `ksp.ac.th` ต้องอยู่ใน Cloudflare account เดียวกับ Worker
+1. ตรวจว่า zone `ksp.ac.th` อยู่ใน Cloudflare account เดียวกัน
+2. **Workers & Pages** → **webksp** → **Settings** → **Domains & Routes** → **Add**
+3. เพิ่ม `ksp.ac.th` แล้วเพิ่ม `www.ksp.ac.th`
+4. ถ้าโดเมนยังไม่ชี้มา Cloudflare → **Websites** → Add site → เปลี่ยน nameserver
 
-1. เข้า [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Websites** → ตรวจว่ามี zone `ksp.ac.th`
-2. ถ้ายังไม่มี → **Add a site** → ใส่ `ksp.ac.th` → เปลี่ยน nameserver ตามที่ Cloudflare แจ้ง
-3. Deploy โปรเจกต์ (push ขึ้น GitHub) → Cloudflare สร้าง DNS record ให้อัตโนมัติ
-4. `www.ksp.ac.th` จะ redirect 301 ไป `https://ksp.ac.th` โดย Worker
+ทดสอบก่อนใช้โดเมน: เปิด URL ชั่วคราว `https://webksp.<account>.workers.dev`
 
 ## พัฒนาในเครื่อง
 
