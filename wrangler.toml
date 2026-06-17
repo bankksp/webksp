@@ -1,15 +1,20 @@
 name = "webksp"
+main = "worker/index.ts"
 compatibility_date = "2024-09-23"
-pages_build_output_dir = "dist"
 
-# Environment variables สำหรับ production ตั้งใน Cloudflare Dashboard:
-# Workers & Pages > webksp > Settings > Environment variables
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+# Environment variables ตั้งใน Cloudflare Dashboard:
+# Workers & Pages > webksp > Settings > Variables and Secrets
 #
-# Build-time (สำหรับ Vite):
+# Build-time (Vite):
 #   VITE_GAS_WEB_APP_URL
 #   VITE_GAS_SECRET
 #   VITE_ADMIN_EMAIL
 #
-# Runtime (สำหรับ Pages Functions):
+# Runtime (Worker):
 #   GAS_WEB_APP_URL
 #   GAS_SECRET

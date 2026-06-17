@@ -7,8 +7,8 @@
     "dev": "NODE_ENV=development tsx api/index.ts",
     "build": "vite build",
     "preview": "vite preview",
-    "pages:dev": "npm run build && wrangler pages dev dist",
-    "pages:deploy": "npm run build && wrangler pages deploy dist --project-name=webksp",
+    "pages:dev": "npm run build && wrangler dev",
+    "pages:deploy": "npm run build && wrangler deploy",
     "start": "node api/index.ts",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
