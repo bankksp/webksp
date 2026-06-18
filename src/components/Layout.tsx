@@ -276,12 +276,20 @@ const Navbar = () => {
                 </button>
               </div>
             ) : (
-              <button 
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/demo"
+                  className="hidden sm:inline-flex text-indigo-600 px-4 py-2 rounded-full text-sm font-bold hover:bg-indigo-50 transition-all border border-indigo-200"
+                >
+                  ดูตัวอย่าง
+                </Link>
+                <button 
                 onClick={handleLogin}
                 className="bg-indigo-600 text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-indigo-700 transition-all shadow-md flex items-center gap-2"
               >
                 <LogIn size={16} /> เข้าสู่ระบบ
               </button>
+              </div>
             )}
           </div>
         </div>

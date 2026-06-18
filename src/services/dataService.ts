@@ -2,6 +2,20 @@ import { toast } from 'sonner';
 import * as bcrypt from 'bcryptjs';
 import { Staff, Post, Executive, InfoDocument } from '../types';
 import { API_URL } from '../config';
+import {
+  SAMPLE_SCHOOL_INFO,
+  SAMPLE_HOME_CONFIG,
+  SAMPLE_STAFF,
+  SAMPLE_EXECUTIVES,
+  SAMPLE_INFO_DOCUMENTS,
+  getSamplePostById,
+  getSamplePosts,
+  isSampleId,
+} from '../data/sampleData';
+
+function withSample<T extends object>(data: T): T & { _isSample: true } {
+  return { ...data, _isSample: true as const };
+}
 
 // --- Configuration (Proxy via Cloudflare Worker) ---
 
@@ -486,10 +500,10 @@ export const getSchoolInfo = async () => {
         return info;
       }
     }
-    return null;
+    return withSample(fixImageUrls(SAMPLE_SCHOOL_INFO));
   } catch (error) {
     console.error('getSchoolInfo failed:', error);
-    return null;
+    return withSample(fixImageUrls(SAMPLE_SCHOOL_INFO));
   }
 };
 
@@ -617,11 +631,17 @@ const processStaff = (staff: any) => {
 };
 
 export const getStaff = async () => {
-  const data = await getAPI('Staff');
-  return data
-    .filter((s: any) => s.status === 'approved' || !s.status) // Allow legacy records without status
-    .map((s: any) => processStaff(s))
-    .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+  try {
+    const data = await getAPI('Staff');
+    const staff = (data || [])
+      .filter((s: any) => s.status === 'approved' || !s.status)
+      .map((s: any) => processStaff(s))
+      .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+    if (staff.length > 0) return staff;
+    return SAMPLE_STAFF.map((s) => withSample(s));
+  } catch {
+    return SAMPLE_STAFF.map((s) => withSample(s));
+  }
 };
 
 export const getStaffById = async (id: string) => {
@@ -773,19 +793,30 @@ const processPost = (post: any): Post => {
 };
 
 export const getPosts = async (category?: string): Promise<Post[]> => {
-  const data = await getAPI('Posts', undefined, category);
-  return (data || [])
-    .map((p: any) => processPost(p))
-    .sort((a: Post, b: Post) => {
-      const dateA = new Date(a.createdAt).getTime();
-      const dateB = new Date(b.createdAt).getTime();
-      return dateB - dateA;
-    });
+  try {
+    const data = await getAPI('Posts', undefined, category);
+    const posts = (data || [])
+      .map((p: any) => processPost(p))
+      .sort((a: Post, b: Post) => {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return dateB - dateA;
+      });
+    if (posts.length > 0) return posts;
+    return getSamplePosts(category).map((p) => withSample(p));
+  } catch {
+    return getSamplePosts(category).map((p) => withSample(p));
+  }
 };
 
 export const getPostById = async (id: string): Promise<Post | null> => {
+  if (isSampleId(id)) {
+    const sample = getSamplePostById(id);
+    return sample ? withSample(sample) : null;
+  }
   const post = await getAPI('Posts', id);
-  return processPost(post);
+  if (post && !post.error) return processPost(post);
+  return getSamplePostById(id) ? withSample(getSamplePostById(id)!) : null;
 };
 
 export const getPostByShortId = async (shortId: string): Promise<Post | null> => {
@@ -870,8 +901,13 @@ const processHomeConfig = (config: any) => {
 };
 
 export const getHomeConfig = async () => {
-  const data = await getAPI('HomeConfig');
-  return data && data.length > 0 ? processHomeConfig(data[0]) : null;
+  try {
+    const data = await getAPI('HomeConfig');
+    if (data && data.length > 0) return processHomeConfig(data[0]);
+    return withSample(processHomeConfig(SAMPLE_HOME_CONFIG));
+  } catch {
+    return withSample(processHomeConfig(SAMPLE_HOME_CONFIG));
+  }
 };
 
 export const updateHomeConfig = async (data: any) => {
@@ -904,9 +940,15 @@ export const updateHomeConfig = async (data: any) => {
 
 // --- Executives ---
 export const getExecutives = async (): Promise<Executive[]> => {
-  const data = await getAPI('Executives');
-  const processed = fixImageUrls(data);
-  return processed.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+  try {
+    const data = await getAPI('Executives');
+    const processed = fixImageUrls(data || []);
+    const list = processed.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+    if (list.length > 0) return list;
+    return SAMPLE_EXECUTIVES.map((e) => withSample(e));
+  } catch {
+    return SAMPLE_EXECUTIVES.map((e) => withSample(e));
+  }
 };
 
 export const createExecutive = async (data: any) => {
@@ -923,18 +965,30 @@ export const deleteExecutive = async (id: string) => {
 
 // --- Info Documents ---
 export const getInfoDocuments = async (category?: string): Promise<InfoDocument[]> => {
-  const data = await getAPI('InfoDocuments', undefined, category);
-  const processed = fixImageUrls(data || []);
-  return processed
-    .map((d: any) => ({
-      ...d,
-      createdAt: d.createdAt || new Date().toISOString()
-    }))
-    .sort((a: any, b: any) => {
-      const dateA = new Date(a.createdAt).getTime();
-      const dateB = new Date(b.createdAt).getTime();
-      return dateB - dateA;
-    });
+  try {
+    const data = await getAPI('InfoDocuments', undefined, category);
+    const processed = fixImageUrls(data || []);
+    const docs = processed
+      .map((d: any) => ({
+        ...d,
+        createdAt: d.createdAt || new Date().toISOString(),
+      }))
+      .sort((a: any, b: any) => {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return dateB - dateA;
+      });
+    if (docs.length > 0) return docs;
+    const samples = category
+      ? SAMPLE_INFO_DOCUMENTS.filter((d) => d.category === category)
+      : SAMPLE_INFO_DOCUMENTS;
+    return samples.map((d) => withSample(d));
+  } catch {
+    const samples = category
+      ? SAMPLE_INFO_DOCUMENTS.filter((d) => d.category === category)
+      : SAMPLE_INFO_DOCUMENTS;
+    return samples.map((d) => withSample(d));
+  }
 };
 
 export const createInfoDocument = async (data: any) => {
@@ -1124,5 +1178,10 @@ export const onNewPost = (callback: (posts: any[]) => void) => {
   };
 };
 
-
-
+export const loadDemoPageData = () => ({
+  config: withSample(processHomeConfig(SAMPLE_HOME_CONFIG)!),
+  schoolInfo: withSample(fixImageUrls(SAMPLE_SCHOOL_INFO)),
+  news: getSamplePosts('news').map((p) => withSample(p)),
+  activities: getSamplePosts('activity').map((p) => withSample(p)),
+  publications: getSamplePosts('publication').map((p) => withSample(p)),
+});

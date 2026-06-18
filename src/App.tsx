@@ -131,6 +131,7 @@ export default function App() {
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Layout><Home /></Layout>} />
+            <Route path="/demo" element={<Layout><Home demoMode /></Layout>} />
             <Route path="/about" element={<Layout><About /></Layout>} />
             <Route path="/about/:section" element={<Layout><About /></Layout>} />
             <Route path="/staff" element={<Layout><Staff /></Layout>} />

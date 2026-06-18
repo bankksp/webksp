@@ -7,11 +7,12 @@ import {
   Star, Smile, Sparkles
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { getHomeConfig, getPosts, getStaffByUid, getSchoolInfo, trackVisit, getDetailedStats } from '../services/dataService';
+import { getHomeConfig, getPosts, getStaffByUid, getSchoolInfo, trackVisit, getDetailedStats, loadDemoPageData } from '../services/dataService';
 import { HomeConfig, Post, SchoolInfo } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { getYoutubeId } from '../lib/utils';
 import { createExcerpt } from '../lib/excerpt';
+import { SampleBadge, SampleBanner } from '../components/SampleBadge';
 
 const AnnouncementPopup = ({ config }: { config: HomeConfig }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -124,7 +125,7 @@ const getPostLink = (post: Post) => {
   return `/post/${post.id}`;
 };
 
-export const Home = () => {
+export const Home = ({ demoMode = false }: { demoMode?: boolean }) => {
   const [config, setConfig] = useState<HomeConfig | null>(null);
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
   const [news, setNews] = useState<Post[]>([]);
@@ -132,9 +133,22 @@ export const Home = () => {
   const [publications, setPublications] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showSampleBanner, setShowSampleBanner] = useState(demoMode);
   const { user } = useAuth();
 
   useEffect(() => {
+    if (demoMode) {
+      const demo = loadDemoPageData();
+      setConfig(demo.config);
+      setSchoolInfo(demo.schoolInfo);
+      setNews(demo.news);
+      setActivities(demo.activities);
+      setPublications(demo.publications);
+      setShowSampleBanner(true);
+      setLoading(false);
+      return;
+    }
+
     const fetchCriticalData = async () => {
       try {
         const [homeConfig, info] = await Promise.all([
@@ -143,7 +157,11 @@ export const Home = () => {
         ]);
         setConfig(homeConfig);
         setSchoolInfo(info);
-        setLoading(false); // Show the page once critical data is ready
+        setShowSampleBanner(
+          Boolean((homeConfig as { _isSample?: boolean })?._isSample) ||
+            Boolean((info as { _isSample?: boolean })?._isSample),
+        );
+        setLoading(false);
         
         // Fetch secondary data in background
         fetchSecondaryData();
@@ -165,6 +183,13 @@ export const Home = () => {
         setNews(newsPosts.slice(0, 6));
         setActivities(activityPosts.slice(0, 6));
         setPublications(publicationPosts.slice(0, 6));
+
+        if (
+          newsPosts.some((p) => (p as { _isSample?: boolean })._isSample) ||
+          activityPosts.some((p) => (p as { _isSample?: boolean })._isSample)
+        ) {
+          setShowSampleBanner(true);
+        }
         
         if (user) {
           const isDefaultAdmin = user.email?.toLowerCase() === 'nanthaphat@ksp.ac.th';
@@ -176,7 +201,7 @@ export const Home = () => {
     };
 
     fetchCriticalData();
-  }, []);
+  }, [demoMode, user]);
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [videoOpen, setVideoOpen] = useState(false);
@@ -235,6 +260,11 @@ export const Home = () => {
         <link rel="canonical" href={window.location.origin} />
       </Helmet>
       {config && <AnnouncementPopup config={config} />}
+      {showSampleBanner && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+          <SampleBanner />
+        </div>
+      )}
       {/* Hero Slider Section */}
       <section className="relative w-full overflow-hidden bg-gray-950 group">
         <div className="relative w-full aspect-video sm:aspect-[1920/580] max-h-[580px]">
@@ -478,8 +508,11 @@ export const Home = () => {
                     referrerPolicy="no-referrer" 
                     loading="lazy"
                   />
-                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-indigo-600 shadow-sm">
-                    {item.category === 'news' ? 'ข่าวสาร' : 'กิจกรรม'}
+                  <div className="absolute top-4 left-4 flex gap-2">
+                    <div className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-indigo-600 shadow-sm">
+                      {item.category === 'news' ? 'ข่าวสาร' : 'กิจกรรม'}
+                    </div>
+                    {(item as { _isSample?: boolean })._isSample && <SampleBadge />}
                   </div>
                 </Link>
                 <div className="p-8">

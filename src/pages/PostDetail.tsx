@@ -12,6 +12,7 @@ import {
 import { toast } from 'sonner';
 import { getPostById, getPosts, getPostByShortId, incrementPostView, trackVisit, getSchoolInfo } from '../services/dataService';
 import { Post, SchoolInfo } from '../types';
+import { SampleBadge, SampleBanner } from '../components/SampleBadge';
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -49,8 +50,8 @@ export const PostDetail = () => {
       }
       setPost(data);
       
-      // Increment view count & track visit
-      if (data.id) {
+      // Increment view count & track visit (skip sample posts)
+      if (data.id && !(data as { _isSample?: boolean })._isSample) {
         incrementPostView(data.id).then(res => {
           if (res?.success && res.views) {
             setPost(prev => prev ? { ...prev, views: res.views } : null);
@@ -108,6 +109,8 @@ export const PostDetail = () => {
 
   if (!post) return null;
 
+  const isSample = Boolean((post as { _isSample?: boolean })._isSample);
+
   const getDriveFolderId = (url: string) => {
     if (!url) return null;
     const match = url.match(/[-\w]{25,}/);
@@ -156,6 +159,11 @@ export const PostDetail = () => {
 
         <link rel="canonical" href={getShareUrl()} />
       </Helmet>
+      {isSample && (
+        <div className="max-w-4xl mx-auto px-4 pt-4">
+          <SampleBanner>เนื้อหานี้เป็นตัวอย่างสำหรับแสดงหน้าตาเว็บไซต์</SampleBanner>
+        </div>
+      )}
       {/* Hero Header */}
       <section className="relative h-[60vh] overflow-hidden">
         <img 
@@ -177,6 +185,7 @@ export const PostDetail = () => {
               <span className="px-4 py-1.5 bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-full shadow-lg">
                 {post.category}
               </span>
+              {isSample && <SampleBadge className="!text-white !bg-amber-500/90 !ring-amber-300" />}
               <div className="flex items-center gap-4 text-white/80 text-sm font-medium">
                 <div className="flex items-center gap-2">
                   <Calendar size={14} />
