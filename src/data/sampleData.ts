@@ -1,21 +1,36 @@
 import type { Executive, HomeConfig, InfoDocument, Post, SchoolInfo, Staff } from '../types';
+import { EDUCATION_DIRECTION_DEFAULTS } from './educationDirectionDefaults';
 
-const LOGO = 'https://s.imgz.io/2026/04/04/ccddd146d75a508fb2.png';
+import { DEFAULT_SITE_LOGO } from '../constants/branding';
+
+const LOGO = DEFAULT_SITE_LOGO;
 const BANNER = 'https://lh3.googleusercontent.com/d/1vZ8xK9yJ2mN3pQ4rS5tU6vW7xY8zA9bC0dE1fG2h';
+
+const D = EDUCATION_DIRECTION_DEFAULTS;
 
 export const SAMPLE_SCHOOL_INFO: SchoolInfo = {
   id: 'sample',
   name: 'โรงเรียนกาฬสินธุ์ปัญญานุกูล จังหวัดกาฬสินธุ์',
-  vision: '“ก้าวทันเทคโนโลยี มีทักษะการทำงาน บนพื้นฐานความเป็นไทย ใส่ใจคุณภาพชีวิต”',
-  mission: '“พัฒนากาย สังคม จิต ช่วยพิชิตความพิการ”',
+  vision: D.vision,
+  mission: D.mission,
+  goals: D.goals,
+  strategies: D.strategies,
+  values: D.values,
+  mottoAttribution: D.mottoAttribution,
+  colorsDescription: D.colorsDescription,
   history:
     'โรงเรียนกาฬสินธุ์ปัญญานุกูล จัดการศึกษาสำหรับเด็กและเยาวชนที่มีความต้องการจำเป็นพิเศษ มุ่งพัฒนาศักยภาพผู้เรียนให้พึ่งพาตนเองและอยู่ร่วมในสังคมได้อย่างมีคุณค่า',
+  philosophy: D.philosophy,
+  identity: D.identity,
+  uniqueness: D.uniqueness,
+  motto: D.motto,
+  colors: D.colors,
+  logoDescription: D.logoDescription,
   address: 'เลขที่ 169 หมู่ 13 ตำบลดอนสมบูรณ์ อำเภอยางตลาด จังหวัดกาฬสินธุ์ 46120',
   phone: '043-840842',
   email: 'kalasinpanyanukun@ksp.ac.th',
   facebook: 'https://www.facebook.com/ksp.ac.th',
   logoUrl: LOGO,
-  motto: 'เรียนดี มีคุณธรรม พึ่งตนเองได้',
   slogan: 'โรงเรียนแห่งความหวังและการเติบโต',
 };
 

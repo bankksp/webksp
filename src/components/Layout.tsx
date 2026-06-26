@@ -10,6 +10,8 @@ import { useNewPostNotification } from '../hooks/useNewPostNotification';
 import { getStaffByUid, getInfoDocuments } from '../services/dataService';
 import { Staff } from '../types';
 import { useSchoolInfo } from '../hooks/useSchoolInfo';
+import { getSiteLogo } from '../constants/branding';
+import { isSiteAdmin } from '../lib/auth';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -126,7 +128,7 @@ const Navbar = () => {
     }
   };
 
-  const isAdmin = user?.role === 'admin' || user?.email?.toLowerCase() === 'nanthaphat@ksp.ac.th';
+  const isAdmin = isSiteAdmin(user);
 
   const navLinks = [
     { name: 'หน้าแรก', href: '/' },
@@ -135,7 +137,7 @@ const Navbar = () => {
       href: '/about',
       sub: [
         { name: 'ประวัติโรงเรียน', href: '/about/history' },
-        { name: 'วิสัยทัศน์และอัตลักษณ์', href: '/about/vision' },
+        { name: 'นโยบายการจัดการศึกษา', href: '/about/direction' },
         { name: 'ข้อมูลพื้นฐาน', href: '/about/basic' },
       ]
     },
@@ -173,7 +175,6 @@ const Navbar = () => {
       ]
     },
     { name: 'ติดต่อเรา', href: '/contact' },
-    ...(isAdmin ? [{ name: 'จัดการระบบ', href: '/admin' }] : []),
   ];
 
   const handleLogin = () => navigate('/login');
@@ -193,7 +194,7 @@ const Navbar = () => {
           <Link to="/" className="flex items-center gap-2 sm:gap-3 group">
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-xl p-1 shadow-sm border border-gray-50 flex items-center justify-center transition-transform group-hover:scale-105">
               <img 
-                src={schoolInfo?.logoUrl || "https://s.imgz.io/2026/04/04/ccddd146d75a508fb2.png"} 
+                src={getSiteLogo(schoolInfo?.logoUrl)} 
                 alt="Logo" 
                 className="w-full h-full object-contain mix-blend-multiply"
                 referrerPolicy="no-referrer"
@@ -276,20 +277,12 @@ const Navbar = () => {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <Link
-                  to="/demo"
-                  className="hidden sm:inline-flex text-indigo-600 px-4 py-2 rounded-full text-sm font-bold hover:bg-indigo-50 transition-all border border-indigo-200"
-                >
-                  ดูตัวอย่าง
-                </Link>
-                <button 
+              <button 
                 onClick={handleLogin}
                 className="bg-indigo-600 text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-indigo-700 transition-all shadow-md flex items-center gap-2"
               >
                 <LogIn size={16} /> เข้าสู่ระบบ
               </button>
-              </div>
             )}
           </div>
         </div>
@@ -498,7 +491,7 @@ const Footer = () => {
             <div className="flex items-center gap-2 mb-3 md:mb-6 group">
               <div className="w-8 h-8 md:w-12 md:h-12 bg-white rounded-xl p-1.5 flex items-center justify-center shadow-lg shadow-black/20 transition-transform group-hover:scale-110">
                 <img 
-                  src={schoolInfo?.logoUrl || "https://s.imgz.io/2026/04/04/ccddd146d75a508fb2.png"} 
+                  src={getSiteLogo(schoolInfo?.logoUrl)} 
                   alt="Logo" 
                   className="w-full h-full object-contain mix-blend-multiply"
                   referrerPolicy="no-referrer"

@@ -1,6 +1,7 @@
 import React, { forwardRef } from 'react';
 import { Post, SchoolInfo, Executive } from '../types';
 import parse from 'html-react-parser';
+import { getSiteLogo } from '../constants/branding';
 
 interface NewsletterTemplateProps {
   post: Post;
@@ -57,17 +58,20 @@ export const NewsletterTemplate = forwardRef<HTMLDivElement, NewsletterTemplateP
     dir = executives[0];
   }
 
-  const finalDirectorName = customDirectorName || dir?.name || '';
+  const finalDirectorName = customDirectorName || dir?.name || 'นายมีเกียรติ นาสมตรึก';
   const finalDirectorImage = customDirectorImage || dir?.imageUrl || '';
-  const finalDirectorPosition = customDirectorPosition || dir?.position || 'ผู้อำนวยการสถานศึกษา';
+  const finalDirectorPosition =
+    customDirectorPosition ||
+    dir?.position ||
+    'ผู้อำนวยการโรงเรียนกาฬสินธุ์ปัญญานุกูล จังหวัดกาฬสินธุ์';
 
   const displayExecs = finalDirectorImage ? [{ id: 'dir', name: finalDirectorName, position: finalDirectorPosition, imageUrl: finalDirectorImage }] : [];
 
-  // Use the first image from the album as the cover, fallback to post cover or schoolInfo banner
+  // Use album photos for newsletter banner; cover image is for site display only
   const bannerBg = (post.album && post.album.length > 0 && post.album[0].url) 
     ? post.album[0].url 
     : (post.imageUrl || schoolInfo?.aboutImageUrl || "https://images.unsplash.com/photo-1592289901416-52c6f39cd5ea?auto=format&fit=crop&q=80&w=1200&h=400");
-  const logo = schoolInfo?.logoUrl || "https://s.imgz.io/2026/04/04/ccddd146d75a508fb2.png";
+  const logo = getSiteLogo(schoolInfo?.logoUrl);
 
   return (
     <div 

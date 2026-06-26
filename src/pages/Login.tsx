@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { User, Lock, Mail, CreditCard, LogIn, UserPlus, Eye, EyeOff, ArrowLeft, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSchoolInfo } from '../hooks/useSchoolInfo';
+import { getSiteLogo } from '../constants/branding';
 
 export const Login = () => {
   const navigate = useNavigate();
@@ -114,7 +115,7 @@ export const Login = () => {
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-24">
               <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center">
-                <img src={schoolInfo?.logoUrl || "https://s.imgz.io/2026/04/04/ccddd146d75a508fb2.png"} alt="Logo" className="w-7 h-7 object-contain brightness-0 invert" />
+                <img src={getSiteLogo(schoolInfo?.logoUrl)} alt="Logo" className="w-7 h-7 object-contain brightness-0 invert" />
               </div>
               <span className="text-2xl font-black font-display tracking-tighter">KSP</span>
             </div>

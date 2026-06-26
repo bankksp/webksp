@@ -18,7 +18,12 @@ export interface SchoolInfo {
   uniqueness?: string;
   slogan?: string;
   colors?: string;
+  colorsDescription?: string;
   logoDescription?: string;
+  values?: string;
+  goals?: string;
+  strategies?: string;
+  mottoAttribution?: string;
   aboutCoverUrl?: string;
   aboutImageUrl?: string;
   missionImageUrl?: string;
@@ -68,6 +73,33 @@ export interface Activity {
   fiscalYear?: string; // Added for filtering
 }
 
+export interface WorkDriveFile {
+  id: string;
+  name: string;
+  url: string;
+  mimeType?: string;
+  size?: number;
+  uploadedAt: string;
+}
+
+export interface WorkDriveFolder {
+  id: string;
+  name: string;
+  files: WorkDriveFile[];
+  note?: string;
+  createdAt: string;
+}
+
+export interface WorkDriveYear {
+  year: string;
+  folders: WorkDriveFolder[];
+}
+
+export interface AnnualWorkDrive {
+  version: 1;
+  years: WorkDriveYear[];
+}
+
 export interface Staff {
   id?: string;
   name: string;
@@ -82,7 +114,7 @@ export interface Staff {
   activities?: Activity[];
   bio?: string;
   website?: string;
-  annualData?: Record<string, any>;
+  annualData?: AnnualWorkDrive | Record<string, unknown> | string;
   certificates?: Certificate[];
   uid?: string;
   idCard?: string;
@@ -117,7 +149,7 @@ export interface InfoDocument {
 }
 
 export interface MediaItem {
-  type: 'image' | 'video';
+  type: 'image' | 'video' | 'shortId' | 'newsletter';
   url: string;
   thumbnailUrl?: string; // Optional thumbnail for videos
 }

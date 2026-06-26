@@ -18,3 +18,14 @@ export const createExcerpt = (content: string, length: number = 100): string => 
   
   return text;
 };
+
+/** Plain-text meta description (~160 chars) from post HTML/markdown for SEO & social previews. */
+export const createMetaDescription = (content: string, maxLength = 160): string => {
+  const text = createExcerpt(content, 400);
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  const cut = text.slice(0, maxLength);
+  const lastSpace = cut.lastIndexOf(' ');
+  const trimmed = (lastSpace > 60 ? cut.slice(0, lastSpace) : cut).trim();
+  return `${trimmed}…`;
+};

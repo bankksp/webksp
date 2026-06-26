@@ -7,9 +7,10 @@ import {
   Star, Smile, Sparkles
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { getHomeConfig, getPosts, getStaffByUid, getSchoolInfo, trackVisit, getDetailedStats, loadDemoPageData } from '../services/dataService';
+import { getHomeConfig, getPosts, getSchoolInfo, trackVisit, getDetailedStats, loadDemoPageData } from '../services/dataService';
 import { HomeConfig, Post, SchoolInfo } from '../types';
 import { useAuth } from '../hooks/useAuth';
+import { isSiteAdmin } from '../lib/auth';
 import { getYoutubeId } from '../lib/utils';
 import { createExcerpt } from '../lib/excerpt';
 import { SampleBadge, SampleBanner } from '../components/SampleBadge';
@@ -173,11 +174,10 @@ export const Home = ({ demoMode = false }: { demoMode?: boolean }) => {
 
     const fetchSecondaryData = async () => {
       try {
-        const [newsPosts, activityPosts, publicationPosts, staffData] = await Promise.all([
+        const [newsPosts, activityPosts, publicationPosts] = await Promise.all([
           getPosts('news'),
           getPosts('activity'),
           getPosts('publication'),
-          user ? getStaffByUid(user.id) : Promise.resolve(null)
         ]);
 
         setNews(newsPosts.slice(0, 6));
@@ -192,8 +192,7 @@ export const Home = ({ demoMode = false }: { demoMode?: boolean }) => {
         }
         
         if (user) {
-          const isDefaultAdmin = user.email?.toLowerCase() === 'nanthaphat@ksp.ac.th';
-          setIsAdmin(staffData?.role === 'admin' || isDefaultAdmin);
+          setIsAdmin(isSiteAdmin(user));
         }
       } catch (error) {
         console.error('Error fetching secondary home data:', error);
@@ -701,31 +700,33 @@ export const Home = ({ demoMode = false }: { demoMode?: boolean }) => {
                 className="rounded-[2rem] md:rounded-[3rem] shadow-2xl w-full aspect-[4/3] object-cover" 
                 referrerPolicy="no-referrer" 
               />
-              <div className="absolute -bottom-4 md:-bottom-8 -right-4 md:-right-8 bg-indigo-600 p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] text-white shadow-2xl">
-                <h4 className="text-3xl md:text-4xl font-bold mb-1 md:mb-2">{config?.quickInfoStatsValue1 || "25+"}</h4>
-                <p className="text-indigo-100 text-[10px] md:text-sm font-medium uppercase tracking-wider">{config?.quickInfoStatsLabel1 || "ปีแห่งการสร้างโอกาส"}</p>
+              <div className="absolute -bottom-4 md:-bottom-8 -right-4 md:-right-8 bg-indigo-600 p-5 md:p-6 rounded-[1.5rem] md:rounded-[2rem] text-white shadow-2xl">
+                <h4 className="text-2xl md:text-3xl font-bold mb-0.5 md:mb-1">{config?.quickInfoStatsValue1 || "25+"}</h4>
+                <p className="text-indigo-100 text-[10px] md:text-xs font-medium uppercase tracking-wider">{config?.quickInfoStatsLabel1 || "ปีแห่งการสร้างโอกาส"}</p>
               </div>
             </div>
             <div>
-              <span className="text-indigo-600 font-bold tracking-widest uppercase text-xs sm:text-sm mb-3 md:mb-4 block">ข้อมูลสารสนเทศ</span>
-              <h2 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-6 md:mb-8 leading-tight">
-                {config?.quickInfoTitle || "เป้าหมายของเราคือ"} <br />
-                <span className="text-indigo-600 italic">{config?.quickInfoSubtitle || "การสร้างอนาคตที่เท่าเทียม"}</span>
+              <span className="text-indigo-600 font-bold tracking-widest uppercase text-[10px] sm:text-xs mb-2 md:mb-3 block">ข้อมูลสารสนเทศ</span>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2 md:mb-3 leading-snug">
+                {config?.quickInfoTitle || "เป้าหมายของเราคือ"}
               </h2>
-              <p className="text-gray-600 mb-8 md:mb-10 text-base md:text-lg leading-relaxed">
+              <p className="text-lg sm:text-xl md:text-2xl font-semibold text-indigo-600 italic mb-5 md:mb-6 leading-snug">
+                {config?.quickInfoSubtitle || "การสร้างอนาคตที่เท่าเทียม"}
+              </p>
+              <p className="text-gray-600 mb-6 md:mb-8 text-sm md:text-base leading-relaxed">
                 {config?.quickInfoDescription || "โรงเรียนกาฬสินธุ์ปัญญานุกูล มุ่งเน้นการพัฒนาผู้เรียนอย่างรอบด้าน ทั้งทางร่างกาย จิตใจ สังคม และสติปัญญา เพื่อให้ผู้เรียนสามารถดำรงชีวิตอยู่ในสังคมได้อย่างมีความสุข"}
               </p>
-              <div className="grid grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
-                <div className="p-4 md:p-6 bg-gray-50 rounded-2xl border border-gray-100">
-                  <h4 className="text-2xl md:text-3xl font-bold text-indigo-600 mb-1">{config?.statsStudents || 0}+</h4>
-                  <p className="text-gray-500 text-[10px] md:text-sm">นักเรียนปัจจุบัน</p>
+              <div className="grid grid-cols-2 gap-3 md:gap-5 mb-6 md:mb-8">
+                <div className="p-3 md:p-5 bg-gray-50 rounded-2xl border border-gray-100">
+                  <h4 className="text-xl md:text-2xl font-bold text-indigo-600 mb-0.5">{config?.statsStudents || 0}+</h4>
+                  <p className="text-gray-500 text-[10px] md:text-xs">นักเรียนปัจจุบัน</p>
                 </div>
-                <div className="p-4 md:p-6 bg-gray-50 rounded-2xl border border-gray-100">
-                  <h4 className="text-2xl md:text-3xl font-bold text-purple-600 mb-1">{config?.statsTeachers || 0}+</h4>
-                  <p className="text-gray-500 text-[10px] md:text-sm">บุคลากรผู้เชี่ยวชาญ</p>
+                <div className="p-3 md:p-5 bg-gray-50 rounded-2xl border border-gray-100">
+                  <h4 className="text-xl md:text-2xl font-bold text-purple-600 mb-0.5">{config?.statsTeachers || 0}+</h4>
+                  <p className="text-gray-500 text-[10px] md:text-xs">บุคลากรผู้เชี่ยวชาญ</p>
                 </div>
               </div>
-              <Link to="/info" className="inline-flex items-center justify-center w-full sm:w-auto gap-2 bg-gray-900 text-white px-8 py-4 rounded-full font-bold hover:bg-gray-800 transition-all shadow-lg">
+              <Link to="/info" className="inline-flex items-center justify-center w-full sm:w-auto gap-2 bg-gray-900 text-white px-6 py-3 md:px-8 md:py-3.5 rounded-full text-sm md:text-base font-bold hover:bg-gray-800 transition-all shadow-lg">
                 ดูข้อมูลสารสนเทศทั้งหมด <ChevronRight size={20} />
               </Link>
             </div>

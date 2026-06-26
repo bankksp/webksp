@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { handleImageProxy } from '../functions/_shared/imageProxy';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -132,6 +133,21 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', node: process.version, time: new Date().toISOString() });
 });
 
+app.get('/api/image-proxy', async (req, res) => {
+  try {
+    const url = new URL(req.originalUrl, `${req.protocol}://${req.get('host')}`);
+    const response = await handleImageProxy(url);
+    res.status(response.status);
+    response.headers.forEach((value, key) => {
+      if (key.toLowerCase() !== 'transfer-encoding') res.setHeader(key, value);
+    });
+    const buffer = Buffer.from(await response.arrayBuffer());
+    res.send(buffer);
+  } catch (error: any) {
+    res.status(502).json({ error: error.message || 'Image proxy failed' });
+  }
+});
+
 // Mount API routes globally so Vercel serverless function catches it natively
 app.use('/api', handleDataRequest);
 
@@ -149,6 +165,22 @@ async function getMetaData(urlPath: string) {
       return `https://lh3.googleusercontent.com/d/${match[1]}`;
     }
     return url;
+  };
+
+  const getPostShareImage = (post: { newsletterUrl?: string; album?: string | unknown[] }) => {
+    if (post.newsletterUrl) return post.newsletterUrl;
+    if (post.album) {
+      try {
+        const album = typeof post.album === 'string' ? JSON.parse(post.album) : post.album;
+        if (Array.isArray(album)) {
+          const newsletter = album.find((item: { type?: string; url?: string }) => item.type === 'newsletter');
+          if (newsletter?.url) return newsletter.url;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    return undefined;
   };
 
   try {
@@ -199,8 +231,9 @@ async function getMetaData(urlPath: string) {
           title = `${post.title} | ${title}`;
           // Clean up content for description (remove markdown/html)
           description = post.content ? post.content.substring(0, 160).replace(/[#*`]/g, '').replace(/<[^>]*>?/gm, '').trim() : description;
-          if (post.imageUrl) {
-            imageUrl = fixDriveUrl(post.imageUrl);
+          const shareImage = getPostShareImage(post);
+          if (shareImage) {
+            imageUrl = fixDriveUrl(shareImage);
           }
           return { title, description, imageUrl };
         }
@@ -245,8 +278,9 @@ async function getMetaData(urlPath: string) {
           if (post) {
             title = `${post.title} | ${title}`;
             description = post.content ? post.content.substring(0, 160).replace(/[#*`]/g, '').replace(/<[^>]*>?/gm, '').trim() : description;
-            if (post.imageUrl) {
-              imageUrl = fixDriveUrl(post.imageUrl);
+            const shareImage = getPostShareImage(post);
+            if (shareImage) {
+              imageUrl = fixDriveUrl(shareImage);
             }
             return { title, description, imageUrl };
           }

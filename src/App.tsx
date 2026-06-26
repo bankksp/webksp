@@ -5,10 +5,15 @@ import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { useSchoolInfo } from './hooks/useSchoolInfo';
 import { useNewPostNotification } from './hooks/useNewPostNotification';
+import { getSiteLogo, getAbsoluteSiteLogo } from './constants/branding';
+import { SITE_URL } from './config';
+import { isSiteAdmin } from './lib/auth';
 
 // Public Pages
 
 import { Home } from './pages/Home';
+import { SharePreview } from './pages/SharePreview';
+import { LineSharePreview } from './pages/LineSharePreview';
 import { About } from './pages/About';
 import { Staff } from './pages/Staff';
 import { StaffProfile } from './pages/StaffProfile';
@@ -83,7 +88,7 @@ const ProtectedRoute = ({ children, adminOnly = false }: { children: React.React
     return <Navigate to="/login" replace />;
   }
 
-  const isAdmin = user.role === 'admin' || user.email?.toLowerCase() === 'nanthaphat@ksp.ac.th';
+  const isAdmin = isSiteAdmin(user);
   const isApproved = user.status === 'approved' || isAdmin;
 
   if (!isApproved && !isAdmin) {
@@ -100,7 +105,8 @@ const ProtectedRoute = ({ children, adminOnly = false }: { children: React.React
 // Global Head Tags Manager
 const GlobalHead = () => {
   const { schoolInfo } = useSchoolInfo();
-  const logoUrl = schoolInfo?.logoUrl || "https://s.imgz.io/2026/04/04/ccddd146d75a508fb2.png";
+  const logoUrl = getAbsoluteSiteLogo(SITE_URL, schoolInfo?.logoUrl);
+  const iconUrl = getSiteLogo(schoolInfo?.logoUrl);
 
   return (
     <Helmet>
@@ -114,8 +120,8 @@ const GlobalHead = () => {
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="canonical" href={window.location.href} />
-      <link rel="icon" type="image/png" href={logoUrl} />
-      <link rel="apple-touch-icon" href={logoUrl} />
+      <link rel="icon" type="image/png" href={iconUrl} />
+      <link rel="apple-touch-icon" href={iconUrl} />
     </Helmet>
   );
 };
@@ -132,6 +138,8 @@ export default function App() {
             {/* Public Routes */}
             <Route path="/" element={<Layout><Home /></Layout>} />
             <Route path="/demo" element={<Layout><Home demoMode /></Layout>} />
+            <Route path="/preview-share" element={<Layout><SharePreview /></Layout>} />
+            <Route path="/preview-line" element={<LineSharePreview />} />
             <Route path="/about" element={<Layout><About /></Layout>} />
             <Route path="/about/:section" element={<Layout><About /></Layout>} />
             <Route path="/staff" element={<Layout><Staff /></Layout>} />

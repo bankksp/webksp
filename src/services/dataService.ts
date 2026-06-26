@@ -1,4 +1,4 @@
-import { toast } from 'sonner';
+import { resolveAdminRole, type SessionUser } from '../lib/auth';
 import * as bcrypt from 'bcryptjs';
 import { Staff, Post, Executive, InfoDocument } from '../types';
 import { API_URL } from '../config';
@@ -22,9 +22,56 @@ function withSample<T extends object>(data: T): T & { _isSample: true } {
 // --- Auth State Management ---
 const AUTH_KEY = 'ksp_panya_user';
 
-export const getCurrentUser = () => {
+export const getCurrentUser = (): SessionUser | null => {
   const user = localStorage.getItem(AUTH_KEY);
   return user ? JSON.parse(user) : null;
+};
+
+/** โหลด role ล่าสุดจาก Users + Staff แล้วอัปเดต session */
+export const refreshCurrentUser = async (): Promise<SessionUser | null> => {
+  const current = getCurrentUser();
+  if (!current?.id && !current?.email && !current?.idCard) {
+    return null;
+  }
+
+  try {
+    const users = await getAPI('Users');
+    const fresh = users.find((u: any) =>
+      (current.id && String(u.id) === String(current.id)) ||
+      (current.email && String(u.email).toLowerCase() === String(current.email).toLowerCase()) ||
+      (current.idCard && String(u.idCard) === String(current.idCard))
+    );
+
+    if (!fresh) {
+      setCurrentUser(null);
+      return null;
+    }
+
+    let staffRole: string | undefined;
+    try {
+      const staff = await getStaffByUid(fresh.id, fresh.email, fresh.idCard);
+      staffRole = staff?.role;
+    } catch {
+      /* staff record optional */
+    }
+
+    const role = resolveAdminRole(fresh.role, staffRole);
+    const userData: SessionUser = {
+      id: fresh.id,
+      email: fresh.email,
+      role,
+      idCard: fresh.idCard,
+      name: fresh.name,
+      imageUrl: fresh.imageUrl,
+      status: fresh.status,
+    };
+    const processed = fixImageUrls(userData);
+    setCurrentUser(processed);
+    return processed;
+  } catch (e) {
+    console.warn('refreshCurrentUser failed, using cached session:', e);
+    return current;
+  }
 };
 
 const setCurrentUser = (user: any) => {
@@ -185,6 +232,40 @@ export const fixDriveUrl = (url: string, isFile = false): string => {
   return url;
 };
 
+/** Resolve newsletter share image URL from post (column, album JSON, or legacy fields). */
+export const getNewsletterUrl = (post: Post | null | undefined): string | undefined => {
+  if (!post) return undefined;
+
+  const parseAlbumItems = (album: unknown): Array<{ type?: string; url?: string }> => {
+    if (!album) return [];
+    let parsed: unknown = album;
+    if (typeof parsed === 'string') {
+      try {
+        parsed = JSON.parse(parsed);
+        if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+      } catch {
+        return [];
+      }
+    }
+    return Array.isArray(parsed) ? parsed : [];
+  };
+
+  const direct =
+    post.newsletterUrl ||
+    (post as { NewsletterUrl?: string }).NewsletterUrl ||
+    (post as { newsletter_url?: string }).newsletter_url;
+  if (direct) return fixDriveUrl(direct);
+
+  const fromAlbum = parseAlbumItems(post.album).find(
+    (i) => i?.type?.toLowerCase() === 'newsletter' && i?.url,
+  );
+  if (fromAlbum?.url) return fixDriveUrl(fromAlbum.url);
+
+  return undefined;
+};
+
+export const invalidatePostsCache = () => clearCache('Posts');
+
 // Helper function to fix Google Drive image URLs and optimize for performance
 const fixImageUrls = (data: any): any => {
   if (!data) return data;
@@ -198,7 +279,7 @@ const fixImageUrls = (data: any): any => {
       
       // List of keys that should be treated as URLs/Files for optimization
       const urlKeys = [
-        'imageUrl', 'thumbnailUrl', 'coverUrl', 'url', 'pdfUrl', 
+        'imageUrl', 'thumbnailUrl', 'coverUrl', 'url', 'pdfUrl', 'newsletterUrl',
         'link', 'driveLink', 'heroImageUrl', 'announcementImageUrl', 
         'quickInfoImageUrl', 'logoUrl', 'schoolTree', 'website',
         'aboutCoverUrl', 'aboutImageUrl', 'missionImageUrl', 
@@ -297,7 +378,24 @@ export const login = async (credentials: { email?: string, idCard?: string, pass
       throw new Error("บัญชีของคุณถูกระงับหรือปฏิเสธการเข้าใช้งาน");
     }
 
-    const userData = { id: user.id, email: user.email, role: user.role, idCard: user.idCard, name: user.name, imageUrl: user.imageUrl };
+    let staffRole: string | undefined;
+    try {
+      const staff = await getStaffByUid(user.id, user.email, user.idCard);
+      staffRole = staff?.role;
+    } catch {
+      /* optional */
+    }
+
+    const role = resolveAdminRole(user.role, staffRole);
+    const userData = {
+      id: user.id,
+      email: user.email,
+      role,
+      idCard: user.idCard,
+      name: user.name,
+      imageUrl: user.imageUrl,
+      status: user.status,
+    };
     const processedUser = fixImageUrls(userData);
     setCurrentUser(processedUser);
     return { success: true, user: processedUser };
@@ -586,7 +684,11 @@ export const createUser = async (data: any) => {
 };
 
 export const updateUser = async (id: string, data: any) => {
-  await fetchAPI({ action: 'update', sheet: 'Users', id, data, matchColumns: ['id', 'uid'] });
+  const adminRole = data.role === 'admin' ? 'admin' : data.role;
+  const userPatch = { ...data };
+  if (data.role) userPatch.role = adminRole;
+
+  await fetchAPI({ action: 'update', sheet: 'Users', id, data: userPatch, matchColumns: ['id', 'uid'] });
   
   // Try to sync to Staff sheet as well
   try {
@@ -595,7 +697,7 @@ export const updateUser = async (id: string, data: any) => {
     if (data.email) staffData.email = data.email;
     if (data.imageUrl) staffData.imageUrl = data.imageUrl;
     if (data.idCard) staffData.idCard = data.idCard;
-    if (data.role) staffData.role = data.role;
+    if (data.role) staffData.role = adminRole;
     if (data.status) staffData.status = data.status;
     
     if (Object.keys(staffData).length > 0) {
@@ -603,6 +705,15 @@ export const updateUser = async (id: string, data: any) => {
     }
   } catch (e) {
     console.error('Error syncing user update to staff:', e);
+  }
+
+  const current = getCurrentUser();
+  if (current && String(current.id) === String(id)) {
+    setCurrentUser({
+      ...current,
+      ...userPatch,
+      role: adminRole || current.role,
+    });
   }
 };
 
@@ -733,26 +844,43 @@ export const updateStaff = async (id: string, data: any) => {
   console.log(`Updating staff member ${id}...`);
   const result = await fetchAPI({ action: 'update', sheet: 'Staff', id, data: processedData, matchColumns: ['id', 'uid'] });
   
-  // Also update Users sheet if uid is present to keep them in sync
-  if (data.uid && data.uid.trim() !== '') {
+  // Also update Users sheet — หา record จาก uid, email หรือ idCard
+  const userPatch: Record<string, unknown> = {};
+  if (data.name) userPatch.name = data.name;
+  if (data.email) userPatch.email = data.email;
+  if (data.imageUrl) userPatch.imageUrl = data.imageUrl;
+  if (data.idCard) userPatch.idCard = data.idCard;
+  if (data.phone) userPatch.phone = data.phone;
+  if (data.password) userPatch.password = data.password;
+  if (data.role) userPatch.role = data.role === 'admin' ? 'admin' : data.role;
+  if (data.status) userPatch.status = data.status;
+
+  if (Object.keys(userPatch).length > 0) {
     try {
-      const userData: any = {};
-      if (data.name) userData.name = data.name;
-      if (data.email) userData.email = data.email;
-      if (data.imageUrl) userData.imageUrl = data.imageUrl;
-      if (data.idCard) userData.idCard = data.idCard;
-      if (data.phone) userData.phone = data.phone;
-      if (data.password) userData.password = data.password;
-      if (data.role) userData.role = data.role;
-      if (data.status) userData.status = data.status;
-      
-      if (Object.keys(userData).length > 0) {
-        console.log(`Syncing staff update to user record ${data.uid}...`);
-        await fetchAPI({ action: 'update', sheet: 'Users', id: data.uid, data: userData, matchColumns: ['id', 'uid'] });
+      if (data.uid && String(data.uid).trim()) {
+        await fetchAPI({ action: 'update', sheet: 'Users', id: data.uid, data: userPatch, matchColumns: ['id', 'uid'] });
+      } else {
+        const users = await getAPI('Users');
+        const linked = users.find((u: any) =>
+          (data.email && u.email && String(u.email).toLowerCase() === String(data.email).toLowerCase()) ||
+          (data.idCard && u.idCard && String(u.idCard) === String(data.idCard))
+        );
+        if (linked?.id) {
+          await fetchAPI({ action: 'update', sheet: 'Users', id: linked.id, data: userPatch, matchColumns: ['id', 'uid'] });
+        }
       }
     } catch (e: any) {
-      console.error(`Error syncing staff update to users (UID: ${data.uid}):`, e.message || e);
+      console.error('Error syncing staff update to users:', e.message || e);
     }
+  }
+
+  const current = getCurrentUser();
+  if (current && data.role && (
+    (data.uid && String(data.uid) === String(current.id)) ||
+    (data.email && current.email && String(data.email).toLowerCase() === String(current.email).toLowerCase()) ||
+    (data.idCard && current.idCard && String(data.idCard) === String(current.idCard))
+  )) {
+    setCurrentUser({ ...current, role: resolveAdminRole(data.role, data.role) });
   }
   
   return result;
@@ -767,16 +895,37 @@ const processPost = (post: any): Post => {
   if (!post) return post;
   const processed = { ...post };
   if (processed.album && typeof processed.album === 'string') {
-    try { processed.album = JSON.parse(processed.album); } catch (e) { processed.album = []; }
+    try {
+      let parsed: unknown = JSON.parse(processed.album);
+      if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+      processed.album = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      processed.album = [];
+    }
   }
   
   // Unpack shortId from album
   if (Array.isArray(processed.album)) {
     const shortIdItem = processed.album.find((item: any) => item.type === 'shortId');
     if (shortIdItem) {
-      processed.shortId = shortIdItem.url;
+      processed.shortId = String(shortIdItem.url ?? '').trim();
       processed.album = processed.album.filter((item: any) => item.type !== 'shortId');
     }
+    const newsletterItem = processed.album.find(
+      (item: any) => item?.type?.toLowerCase() === 'newsletter',
+    );
+    if (newsletterItem?.url) {
+      processed.newsletterUrl = fixDriveUrl(newsletterItem.url);
+      processed.album = processed.album.filter((item: any) => item.type !== 'newsletter');
+    }
+  }
+
+  if (processed.newsletterUrl && typeof processed.newsletterUrl === 'string') {
+    processed.newsletterUrl = fixDriveUrl(processed.newsletterUrl);
+  }
+
+  if (processed.shortId != null && processed.shortId !== '') {
+    processed.shortId = String(processed.shortId).trim();
   }
 
   // Handle legacy authorName mapping if it exists
@@ -809,7 +958,8 @@ export const getPosts = async (category?: string): Promise<Post[]> => {
   }
 };
 
-export const getPostById = async (id: string): Promise<Post | null> => {
+export const getPostById = async (id: string, options?: { fresh?: boolean }): Promise<Post | null> => {
+  if (options?.fresh) clearCache('Posts');
   if (isSampleId(id)) {
     const sample = getSamplePostById(id);
     return sample ? withSample(sample) : null;
@@ -819,11 +969,13 @@ export const getPostById = async (id: string): Promise<Post | null> => {
   return getSamplePostById(id) ? withSample(getSamplePostById(id)!) : null;
 };
 
-export const getPostByShortId = async (shortId: string): Promise<Post | null> => {
+export const getPostByShortId = async (shortId: string, options?: { fresh?: boolean }): Promise<Post | null> => {
+  if (options?.fresh) clearCache('Posts');
+  const needle = String(shortId).trim();
   const posts = await getAPI('Posts');
   const post = posts.find((p: any) => {
     const processed = processPost(p);
-    return processed.shortId === shortId;
+    return String(processed.shortId ?? '').trim() === needle;
   });
   return post ? processPost(post) : null;
 };
@@ -835,9 +987,12 @@ export const createPost = async (data: any) => {
   };
   
   const album = Array.isArray(processedData.album) ? [...processedData.album] : [];
-  const filteredAlbum = album.filter((item: any) => item.type !== 'shortId');
+  const filteredAlbum = album.filter((item: any) => item.type !== 'shortId' && item.type !== 'newsletter');
   if (processedData.shortId) {
     filteredAlbum.push({ type: 'shortId', url: processedData.shortId });
+  }
+  if (processedData.newsletterUrl) {
+    filteredAlbum.push({ type: 'newsletter', url: processedData.newsletterUrl });
   }
   processedData.album = JSON.stringify(filteredAlbum);
   
@@ -848,9 +1003,12 @@ export const updatePost = async (id: string, data: any) => {
   const processedData = { ...data };
   
   const album = Array.isArray(processedData.album) ? [...processedData.album] : [];
-  const filteredAlbum = album.filter((item: any) => item.type !== 'shortId');
+  const filteredAlbum = album.filter((item: any) => item.type !== 'shortId' && item.type !== 'newsletter');
   if (processedData.shortId) {
     filteredAlbum.push({ type: 'shortId', url: processedData.shortId });
+  }
+  if (processedData.newsletterUrl) {
+    filteredAlbum.push({ type: 'newsletter', url: processedData.newsletterUrl });
   }
   processedData.album = JSON.stringify(filteredAlbum);
   

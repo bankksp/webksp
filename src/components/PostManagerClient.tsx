@@ -16,6 +16,7 @@ import { AlbumUpload } from '@/components/AlbumUpload';
 import { Post, MediaItem, SchoolInfo, Executive } from '@/types';
 import { motion, AnimatePresence } from 'motion/react';
 import { createExcerpt } from '@/lib/excerpt';
+import { SITE_URL } from '@/config';
 import { NewsletterTemplate } from '@/components/NewsletterTemplate';
 import { toBlob, toJpeg } from 'html-to-image';
 
@@ -203,6 +204,12 @@ const PostManagerClient = () => {
     }
   };
 
+  const handlePreview = (post: Post) => {
+    const origin = (SITE_URL || window.location.origin).replace(/\/$/, '');
+    const path = post.shortId ? `/${post.shortId}` : `/p/${post.id}`;
+    window.open(`${origin}${path}`, '_blank', 'noopener,noreferrer');
+  };
+
   const handleGenerateNewsletter = () => {
     if (!formData.title) {
       toast.error('กรุณากรอกหัวข้อข่าวสารก่อนสร้างแผ่นข่าว');
@@ -364,7 +371,12 @@ const PostManagerClient = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                        <button className="p-2 text-gray-400 hover:text-indigo-600 transition-colors">
+                        <button
+                          type="button"
+                          onClick={() => handlePreview(post)}
+                          title="ดูตัวอย่างหน้าข่าว"
+                          className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                        >
                           <Eye size={18} />
                         </button>
                         <button 

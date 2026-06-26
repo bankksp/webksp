@@ -8,7 +8,8 @@ import {
 } from 'lucide-react';
 import { getAllStaff, createStaff, updateStaff, deleteStaff } from '../../services/dataService';
 import { FileUpload } from '../../components/FileUpload';
-import { Staff } from '../../types';
+import { AnnualWorkDrivePanel } from '../../components/AnnualWorkDrivePanel';
+import { Staff, AnnualWorkDrive } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
@@ -47,7 +48,7 @@ export const StaffManager = () => {
     activities: [] as any[],
     certificates: [] as any[],
     bio: '',
-    annualData: ''
+    annualData: undefined as AnnualWorkDrive | undefined,
   });
 
   useEffect(() => {
@@ -90,7 +91,7 @@ export const StaffManager = () => {
         activities: staff.activities || [],
         certificates: staff.certificates || [],
         bio: staff.bio || '',
-        annualData: typeof staff.annualData === 'string' ? staff.annualData : (staff.annualData ? JSON.stringify(staff.annualData) : '')
+        annualData: staff.annualData as AnnualWorkDrive | undefined,
       });
     } else {
       setEditingStaff(null);
@@ -114,7 +115,7 @@ export const StaffManager = () => {
         activities: [],
         certificates: [],
         bio: '',
-        annualData: ''
+        annualData: undefined,
       });
     }
     setIsModalOpen(true);
@@ -126,16 +127,6 @@ export const StaffManager = () => {
     const toastId = toast.loading(editingStaff ? 'กำลังอัปเดตข้อมูล...' : 'กำลังบันทึกข้อมูล...');
     try {
       const dataToSubmit = { ...formData };
-      
-      // Try to parse annualData if it's a string
-      if (typeof dataToSubmit.annualData === 'string' && dataToSubmit.annualData.trim()) {
-        try {
-          dataToSubmit.annualData = JSON.parse(dataToSubmit.annualData);
-        } catch (e) {
-          // If not valid JSON, keep as string or handle as needed
-          console.warn('Annual data is not valid JSON, sending as string');
-        }
-      }
 
       if (editingStaff && editingStaff.id) {
         await updateStaff(editingStaff.id, dataToSubmit);
@@ -624,13 +615,11 @@ export const StaffManager = () => {
                     />
                   </div>
 
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-bold text-gray-700 ml-1">ข้อมูลรายปี (Annual Data)</label>
-                    <textarea 
+                  <div className="md:col-span-2">
+                    <AnnualWorkDrivePanel
                       value={formData.annualData}
-                      onChange={(e) => setFormData({...formData, annualData: e.target.value})}
-                      placeholder="ระบุข้อมูลรายปี..."
-                      className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium h-32 outline-none resize-none"
+                      editable
+                      onChange={(drive: AnnualWorkDrive) => setFormData((prev) => ({ ...prev, annualData: drive }))}
                     />
                   </div>
 

@@ -10,6 +10,7 @@ import { getSchoolInfo, updateSchoolInfo } from '../../services/dataService';
 import { FileUpload } from '../../components/FileUpload';
 import { SchoolInfo } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
+import { EDUCATION_DIRECTION_DEFAULTS } from '../../data/educationDirectionDefaults';
 
 export const SchoolInfoEditor = () => {
   const [info, setInfo] = useState<SchoolInfo>({
@@ -31,7 +32,12 @@ export const SchoolInfoEditor = () => {
     uniqueness: '',
     slogan: '',
     colors: '',
+    colorsDescription: '',
     logoDescription: '',
+    values: '',
+    goals: '',
+    strategies: '',
+    mottoAttribution: '',
     aboutCoverUrl: '',
     aboutImageUrl: '',
     missionImageUrl: '',
@@ -80,7 +86,12 @@ export const SchoolInfoEditor = () => {
           uniqueness: data.uniqueness || '',
           slogan: data.slogan || '',
           colors: data.colors || '',
+          colorsDescription: data.colorsDescription || '',
           logoDescription: data.logoDescription || '',
+          values: data.values || '',
+          goals: data.goals || '',
+          strategies: data.strategies || '',
+          mottoAttribution: data.mottoAttribution || '',
           aboutCoverUrl: data.aboutCoverUrl || '',
           aboutImageUrl: data.aboutImageUrl || '',
           missionImageUrl: data.missionImageUrl || '',
@@ -186,66 +197,38 @@ export const SchoolInfoEditor = () => {
                 </div>
               </div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                  <Eye size={16} className="text-indigo-600" /> วิสัยทัศน์ (Vision)
-                </label>
-                <textarea 
-                  rows={4}
-                  value={info.vision}
-                  onChange={(e) => setInfo(prev => ({...prev, vision: e.target.value}))}
-                  placeholder="วิสัยทัศน์ของโรงเรียน..."
-                  className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium resize-none outline-none"
-                ></textarea>
-              </div>
-
-              <div className="space-y-6">
-                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                  <Target size={16} className="text-indigo-600" /> พันธกิจ (Mission)
-                </label>
-                <div className="grid grid-cols-1 gap-4">
-                  <textarea 
-                    rows={4}
-                    value={info.mission}
-                    onChange={(e) => setInfo(prev => ({...prev, mission: e.target.value}))}
-                    placeholder="พันธกิจของโรงเรียน..."
-                    className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium resize-none outline-none"
-                  ></textarea>
-                  <FileUpload 
-                    label="รูปส่วนพันธกิจ"
-                    currentImageUrl={info.missionImageUrl}
-                    onUploadSuccess={(url) => setInfo(prev => ({...prev, missionImageUrl: url}))}
-                  />
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
-        {/* Identity & Motto */}
+        {/* นโยบายการจัดการศึกษา */}
         <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
           <div className="p-8 border-b border-gray-50 bg-gray-50/50 flex items-center gap-3">
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-100">
               <Award size={20} />
             </div>
-            <h2 className="text-xl font-bold text-gray-900">อัตลักษณ์ เอกลักษณ์ และคำขวัญ</h2>
+            <h2 className="text-xl font-bold text-gray-900">นโยบายการจัดการศึกษา</h2>
           </div>
           
           <div className="p-8 space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-3">
                 <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                  <Star size={16} className="text-indigo-600" /> คำขวัญโรงเรียน
+                  <Star size={16} className="text-indigo-600" /> คติพจน์ประจำโรงเรียน
                 </label>
                 <textarea 
                   rows={3}
                   value={info.motto}
                   onChange={(e) => setInfo(prev => ({...prev, motto: e.target.value}))}
-                  placeholder="คำขวัญของโรงเรียน..."
+                  placeholder={EDUCATION_DIRECTION_DEFAULTS.motto}
                   className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium resize-none outline-none"
                 ></textarea>
+                <input
+                  type="text"
+                  value={info.mottoAttribution}
+                  onChange={(e) => setInfo(prev => ({...prev, mottoAttribution: e.target.value}))}
+                  placeholder="ผู้ประทานคติพจน์..."
+                  className="w-full px-6 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium outline-none"
+                />
               </div>
 
               <div className="space-y-3">
@@ -256,74 +239,135 @@ export const SchoolInfoEditor = () => {
                   rows={3}
                   value={info.philosophy}
                   onChange={(e) => setInfo(prev => ({...prev, philosophy: e.target.value}))}
-                  placeholder="ปรัชญาของโรงเรียน..."
+                  placeholder={EDUCATION_DIRECTION_DEFAULTS.philosophy}
                   className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium resize-none outline-none"
                 ></textarea>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                    <Smile size={16} className="text-indigo-600" /> อัตลักษณ์
-                  </label>
-                  <input 
-                    type="text" 
-                    value={info.identity}
-                    onChange={(e) => setInfo(prev => ({...prev, identity: e.target.value}))}
-                    placeholder="ร่าเริง แจ่มใส ใส่ใจงานอาชีพ"
-                    className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium outline-none"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                    <Sparkles size={16} className="text-indigo-600" /> เอกลักษณ์
-                  </label>
-                  <input 
-                    type="text" 
-                    value={info.uniqueness}
-                    onChange={(e) => setInfo(prev => ({...prev, uniqueness: e.target.value}))}
-                    placeholder="โรงเรียนสะอาด บรรยากาศ ร่มรื่น"
-                    className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium outline-none"
-                  />
-                </div>
-              </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="space-y-3">
-                <FileUpload 
-                  label="รูปส่วนอัตลักษณ์/เอกลักษณ์"
-                  currentImageUrl={info.identityImageUrl}
-                  onUploadSuccess={(url) => setInfo(prev => ({...prev, identityImageUrl: url}))}
+                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                  <Smile size={16} className="text-indigo-600" /> อัตลักษณ์
+                </label>
+                <input 
+                  type="text" 
+                  value={info.identity}
+                  onChange={(e) => setInfo(prev => ({...prev, identity: e.target.value}))}
+                  placeholder={EDUCATION_DIRECTION_DEFAULTS.identity}
+                  className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium outline-none"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                  <Sparkles size={16} className="text-indigo-600" /> เอกลักษณ์
+                </label>
+                <input 
+                  type="text" 
+                  value={info.uniqueness}
+                  onChange={(e) => setInfo(prev => ({...prev, uniqueness: e.target.value}))}
+                  placeholder={EDUCATION_DIRECTION_DEFAULTS.uniqueness}
+                  className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium outline-none"
+                />
+              </div>
+              <div className="space-y-3 md:col-span-2">
+                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                  <Target size={16} className="text-indigo-600" /> ค่านิยม
+                </label>
+                <input 
+                  type="text" 
+                  value={info.values}
+                  onChange={(e) => setInfo(prev => ({...prev, values: e.target.value}))}
+                  placeholder={EDUCATION_DIRECTION_DEFAULTS.values}
+                  className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium outline-none"
                 />
               </div>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                <MessageSquare size={16} className="text-indigo-600" /> คติพจน์
-              </label>
-              <input 
-                type="text" 
-                value={info.slogan}
-                onChange={(e) => setInfo(prev => ({...prev, slogan: e.target.value}))}
-                placeholder="พัฒนากาย สังคม จิต ช่วยพิชิตความพิการ"
-                className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium outline-none"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                  <Palette size={16} className="text-indigo-600" /> สีประจำโรงเรียน
+                </label>
+                <input 
+                  type="text" 
+                  value={info.colors}
+                  onChange={(e) => setInfo(prev => ({...prev, colors: e.target.value}))}
+                  placeholder={EDUCATION_DIRECTION_DEFAULTS.colors}
+                  className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium outline-none"
+                />
+                <textarea
+                  rows={4}
+                  value={info.colorsDescription}
+                  onChange={(e) => setInfo(prev => ({...prev, colorsDescription: e.target.value}))}
+                  placeholder="ความหมายของสี (แยกบรรทัด)..."
+                  className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium resize-none outline-none text-sm"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                  <ImageIcon size={16} className="text-indigo-600" /> ความหมายตราสัญลักษณ์
+                </label>
+                <textarea 
+                  rows={6}
+                  value={info.logoDescription}
+                  onChange={(e) => setInfo(prev => ({...prev, logoDescription: e.target.value}))}
+                  placeholder={EDUCATION_DIRECTION_DEFAULTS.logoDescription}
+                  className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium resize-none outline-none"
+                ></textarea>
+              </div>
             </div>
 
             <div className="space-y-3">
               <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                <ImageIcon size={16} className="text-indigo-600" /> ความหมายตราสัญลักษณ์
+                <Eye size={16} className="text-indigo-600" /> วิสัยทัศน์ (Vision)
               </label>
-              <textarea 
+              <textarea
                 rows={3}
-                value={info.logoDescription}
-                onChange={(e) => setInfo(prev => ({...prev, logoDescription: e.target.value}))}
-                placeholder="ความหมายของตราประจำโรงเรียน..."
+                value={info.vision}
+                onChange={(e) => setInfo(prev => ({...prev, vision: e.target.value}))}
+                placeholder={EDUCATION_DIRECTION_DEFAULTS.vision}
                 className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium resize-none outline-none"
-              ></textarea>
+              />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                  <Target size={16} className="text-emerald-600" /> พันธกิจ (แยกบรรทัด)
+                </label>
+                <textarea
+                  rows={10}
+                  value={info.mission}
+                  onChange={(e) => setInfo(prev => ({...prev, mission: e.target.value}))}
+                  placeholder={EDUCATION_DIRECTION_DEFAULTS.mission}
+                  className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium resize-none outline-none text-sm"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                  <Award size={16} className="text-blue-600" /> เป้าประสงค์ (แยกบรรทัด)
+                </label>
+                <textarea
+                  rows={10}
+                  value={info.goals}
+                  onChange={(e) => setInfo(prev => ({...prev, goals: e.target.value}))}
+                  placeholder={EDUCATION_DIRECTION_DEFAULTS.goals}
+                  className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium resize-none outline-none text-sm"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                  <BookOpen size={16} className="text-violet-600" /> กลยุทธ์ (แยกบรรทัด)
+                </label>
+                <textarea
+                  rows={10}
+                  value={info.strategies}
+                  onChange={(e) => setInfo(prev => ({...prev, strategies: e.target.value}))}
+                  placeholder={EDUCATION_DIRECTION_DEFAULTS.strategies}
+                  className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-medium resize-none outline-none text-sm"
+                />
+              </div>
             </div>
           </div>
         </div>

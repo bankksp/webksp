@@ -3,9 +3,11 @@ import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from 'react-helmet-async';
 import { getStaffById, updateStaff } from '../services/dataService';
-import { Staff, Certificate, Activity } from '../types';
+import { Staff, Certificate, Activity, AnnualWorkDrive } from '../types';
 import { User, GraduationCap, Award, Calendar, Phone, Mail, ArrowLeft, Edit, Info, ExternalLink, X, Clock, Building2, Image as ImageIcon, Filter, ChevronDown } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { AnnualWorkDrivePanel } from '../components/AnnualWorkDrivePanel';
+import { ProfileSectionHeader } from '../components/ProfileSectionHeader';
 
 export const StaffProfile = () => {
   const { id } = useParams<{ id: string }>();
@@ -228,9 +230,14 @@ export const StaffProfile = () => {
             animate={{ y: 0, opacity: 1 }}
             className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
           >
-            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <User size={20} className="text-indigo-600" /> ข้อมูลติดต่อ
-            </h3>
+            <ProfileSectionHeader
+              icon={<User size={20} className="text-indigo-600" />}
+              title="ข้อมูลติดต่อ"
+              sectionId="basic"
+              editable={!!isOwnProfile}
+              canAdd={false}
+              className="mb-4"
+            />
             <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <Mail size={18} className="text-gray-400 mt-1 shrink-0" />
@@ -255,15 +262,24 @@ export const StaffProfile = () => {
             </div>
           </motion.div>
 
-          {staff.bio && (
+          {(staff.bio || isOwnProfile) && (
             <motion.div 
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.1 }}
               className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
             >
-              <h3 className="text-lg font-bold text-gray-900 mb-3">เกี่ยวกับฉัน</h3>
-              <p className="text-gray-600 leading-relaxed whitespace-pre-line">{staff.bio}</p>
+              <ProfileSectionHeader
+                icon={<Info size={20} className="text-indigo-600" />}
+                title="เกี่ยวกับฉัน"
+                sectionId="basic"
+                editable={!!isOwnProfile}
+                canAdd={false}
+                className="mb-3"
+              />
+              <p className="text-gray-600 leading-relaxed whitespace-pre-line">
+                {staff.bio || (isOwnProfile ? 'ยังไม่มีข้อมูล — กดแก้ไขเพื่อเพิ่มแนะนำตัว' : '')}
+              </p>
             </motion.div>
           )}
         </div>
@@ -277,9 +293,13 @@ export const StaffProfile = () => {
             transition={{ delay: 0.2 }}
             className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100"
           >
-            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-              <GraduationCap size={24} className="text-indigo-600" /> ประวัติการศึกษา
-            </h3>
+            <ProfileSectionHeader
+              icon={<GraduationCap size={24} className="text-indigo-600" />}
+              title="ประวัติการศึกษา"
+              sectionId="education"
+              editable={!!isOwnProfile}
+              canAdd={false}
+            />
             <div className="text-gray-600 leading-relaxed whitespace-pre-line">
               {staff.education || 'ยังไม่มีข้อมูลประวัติการศึกษา'}
             </div>
@@ -292,9 +312,12 @@ export const StaffProfile = () => {
             transition={{ delay: 0.3 }}
             className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100"
           >
-            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-              <Award size={24} className="text-indigo-600" /> ผลงานและความภาคภูมิใจ
-            </h3>
+            <ProfileSectionHeader
+              icon={<Award size={24} className="text-indigo-600" />}
+              title="ผลงานและความภาคภูมิใจ"
+              sectionId="achievements"
+              editable={!!isOwnProfile}
+            />
             {staff.achievements && staff.achievements.length > 0 ? (
               <div className="space-y-8">
                 {staff.achievements.map((item, idx) => (
@@ -343,11 +366,15 @@ export const StaffProfile = () => {
             transition={{ delay: 0.4 }}
             className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100"
           >
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3">
-                <Calendar size={24} className={themeTextClass} style={getThemeStyle('text')} /> กิจกรรมที่เข้าร่วม
-              </h3>
-              
+            <div className="space-y-4 mb-8">
+              <ProfileSectionHeader
+                icon={<Calendar size={24} className={themeTextClass} style={getThemeStyle('text')} />}
+                title="กิจกรรมที่เข้าร่วม"
+                sectionId="activities"
+                editable={!!isOwnProfile}
+                className="mb-0"
+              />
+
               {/* Filter Bar */}
               <div className="flex flex-wrap items-center gap-2 bg-gray-50 p-2 rounded-2xl border border-gray-100">
                 <div className="flex items-center gap-2 px-2 text-gray-400">
@@ -470,14 +497,18 @@ export const StaffProfile = () => {
             transition={{ delay: 0.45 }}
             className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden relative"
           >
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                <h3 className="text-2xl font-black text-gray-900 flex items-center gap-3">
-                  <Award size={28} className={themeTextClass} style={getThemeStyle('text')} /> เกียรติบัตรและวุฒิบัตร
-                </h3>
+            <div className="space-y-4 mb-10">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <ProfileSectionHeader
+                  icon={<Award size={28} className={themeTextClass} style={getThemeStyle('text')} />}
+                  title="เกียรติบัตรและวุฒิบัตร"
+                  sectionId="certificates"
+                  editable={!!isOwnProfile}
+                  className="mb-0 flex-1"
+                />
                 <Link 
                   to="/portfolio" 
-                  className={`text-sm font-bold flex items-center gap-1 px-4 py-2 rounded-full transition-all ${themeTextClass} ${themeBgLightClass}`}
+                  className={`text-sm font-bold flex items-center gap-1 px-4 py-2 rounded-full transition-all shrink-0 ${themeTextClass} ${themeBgLightClass}`}
                   style={{ ...getThemeStyle('text'), ...getThemeStyle('bgLight') }}
                 >
                   ดูพอร์ตโฟลิโอทั้งหมด <ExternalLink size={14} />
@@ -597,37 +628,15 @@ export const StaffProfile = () => {
             )}
           </motion.section>
 
-          {/* Annual Data */}
-          {staff.annualData && (
-            <motion.section 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100"
-            >
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                <Info size={24} className="text-indigo-600" /> ข้อมูลรายปี (Annual Data)
-              </h3>
-              <div className="text-gray-600 leading-relaxed whitespace-pre-line">
-                {typeof staff.annualData === 'string' ? (
-                  staff.annualData
-                ) : (
-                  <div className="space-y-4">
-                    {Object.entries(staff.annualData || {}).map(([year, info]) => (
-                      <div key={year} className="flex flex-col md:flex-row md:items-start gap-2 md:gap-6 pb-4 border-b border-gray-50 last:border-0 last:pb-0">
-                        <div className="font-black text-indigo-600 text-sm uppercase tracking-widest min-w-[100px]">
-                          ปี {year}
-                        </div>
-                        <div className="flex-1 text-gray-700 font-medium">
-                          {typeof info === 'string' ? info : JSON.stringify(info)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </motion.section>
-          )}
+          <AnnualWorkDrivePanel
+            value={staff.annualData}
+            editable={!!isOwnProfile}
+            onSave={async (drive: AnnualWorkDrive) => {
+              if (!staff.id) return;
+              await updateStaff(staff.id, { annualData: drive });
+              setStaff((prev) => (prev ? { ...prev, annualData: drive } : prev));
+            }}
+          />
         </div>
       </div>
 

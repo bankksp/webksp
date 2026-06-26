@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
+import { isSiteAdmin } from '../lib/auth';
 import { getStaffByUid, updateStaff } from '../services/dataService';
 import { FileUpload } from '../components/FileUpload';
 import { AlbumUpload } from '../components/AlbumUpload';
-import { Staff, Certificate, Achievement, Activity } from '../types';
+import { AnnualWorkDrivePanel } from '../components/AnnualWorkDrivePanel';
+import { Staff, Achievement, Activity, Certificate, AnnualWorkDrive } from '../types';
 import { Save, ArrowLeft, Plus, Trash2, User, GraduationCap, Award, Calendar, Info, Settings, Palette, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -16,6 +18,7 @@ export const StaffEdit = () => {
   const [saving, setSaving] = useState(false);
   const { user } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
+  const deepLinkHandled = useRef(false);
 
   useEffect(() => {
     if (!user) {
@@ -28,8 +31,7 @@ export const StaffEdit = () => {
         const data = await getStaffByUid(user.id, user.email, user.idCard);
         if (data) {
           setStaff(data);
-          const isDefaultAdmin = user.email?.toLowerCase() === 'nanthaphat@ksp.ac.th';
-          setIsAdmin(user.role === 'admin' || isDefaultAdmin);
+          setIsAdmin(isSiteAdmin(user));
         } else {
           toast.error('ไม่พบข้อมูลบุคลากรที่เชื่อมโยงกับบัญชีนี้');
           navigate('/staff');
@@ -45,22 +47,70 @@ export const StaffEdit = () => {
     fetchStaffData();
   }, [user, navigate]);
 
+  useEffect(() => {
+    if (!staff || loading) return;
+
+    const hash = window.location.hash.slice(1);
+    if (!hash.startsWith('section-')) return;
+
+    const timer = window.setTimeout(() => {
+      document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      if (deepLinkHandled.current) return;
+      const shouldAdd = new URLSearchParams(window.location.search).get('add') === '1';
+      if (!shouldAdd) return;
+
+      deepLinkHandled.current = true;
+
+      if (hash === 'section-achievements') {
+        setStaff((prev) => {
+          if (!prev) return prev;
+          const newItem: Achievement = {
+            id: Math.random().toString(36).substr(2, 9),
+            title: '',
+            description: '',
+            images: [],
+          };
+          return { ...prev, achievements: [...(prev.achievements || []), newItem] };
+        });
+      } else if (hash === 'section-activities') {
+        setStaff((prev) => {
+          if (!prev) return prev;
+          const newItem: Activity = {
+            id: Math.random().toString(36).substr(2, 9),
+            title: '',
+            description: '',
+            images: [],
+          };
+          return { ...prev, activities: [...(prev.activities || []), newItem] };
+        });
+      } else if (hash === 'section-certificates') {
+        setStaff((prev) => {
+          if (!prev) return prev;
+          const newCert: Certificate = {
+            id: Math.random().toString(36).substr(2, 9),
+            title: '',
+            fiscalYear: (new Date().getFullYear() + 543).toString(),
+            hours: 0,
+            organizer: '',
+            description: '',
+            imageUrl: '',
+          };
+          return { ...prev, certificates: [...(prev.certificates || []), newCert] };
+        });
+      }
+
+      window.history.replaceState(null, '', `${window.location.pathname}#${hash}`);
+    }, 150);
+
+    return () => window.clearTimeout(timer);
+  }, [staff, loading]);
+
   const handleSave = async () => {
     if (!staff || !staff.id) return;
     setSaving(true);
     try {
       const { id, ...updateData } = staff;
-      
-      // Try to parse annualData if it's a string
-      const annualData = (updateData as any).annualData;
-      if (typeof annualData === 'string' && annualData.trim()) {
-        try {
-          updateData.annualData = JSON.parse(annualData);
-        } catch (e) {
-          console.warn('Annual data is not valid JSON, sending as string');
-        }
-      }
-
       await updateStaff(id, updateData);
       toast.success('บันทึกข้อมูลเรียบร้อยแล้ว');
       navigate(`/staff/profile/${id}`);
@@ -246,7 +296,7 @@ export const StaffEdit = () => {
           </section>
 
           {/* Basic Info */}
-          <section className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+          <section id="section-basic" className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 scroll-mt-24">
             <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
               <User size={24} className="text-indigo-600" /> ข้อมูลพื้นฐาน
             </h2>
@@ -322,7 +372,7 @@ export const StaffEdit = () => {
           </section>
 
           {/* Education */}
-          <section className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+          <section id="section-education" className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 scroll-mt-24">
             <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
               <GraduationCap size={24} className="text-indigo-600" /> ประวัติการศึกษา
             </h2>
@@ -335,7 +385,7 @@ export const StaffEdit = () => {
           </section>
 
           {/* Achievements */}
-          <section className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+          <section id="section-achievements" className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 scroll-mt-24">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <Award size={24} className="text-indigo-600" /> ผลงานและความภาคภูมิใจ
@@ -390,7 +440,7 @@ export const StaffEdit = () => {
           </section>
 
           {/* Activities */}
-          <section className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+          <section id="section-activities" className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 scroll-mt-24">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <Calendar size={24} className="text-indigo-600" /> กิจกรรมที่เข้าร่วม
@@ -466,7 +516,7 @@ export const StaffEdit = () => {
           </section>
 
           {/* Certificates */}
-          <section className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+          <section id="section-certificates" className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 scroll-mt-24">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <Award size={24} className="text-indigo-600" /> เกียรติบัตรและวุฒิบัตร
@@ -569,19 +619,13 @@ export const StaffEdit = () => {
             </div>
           </section>
 
-          {/* Annual Data */}
-          <section className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-            <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-              <Info size={24} className="text-indigo-600" /> ข้อมูลรายปี (Annual Data)
-            </h2>
-            <p className="text-sm text-gray-500 mb-4">ระบุข้อมูลผลงานหรือกิจกรรมรายปี เช่น "2566: ได้รับรางวัลครูดีเด่น..." หรือลิงก์ไปยังเอกสาร</p>
-            <textarea 
-              value={typeof staff.annualData === 'string' ? staff.annualData : (staff.annualData ? JSON.stringify(staff.annualData, null, 2) : '')}
-              onChange={(e) => setStaff({ ...staff, annualData: e.target.value as any })}
-              className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none h-48"
-              placeholder="ระบุข้อมูลรายปี (เช่น 2567: ..., 2566: ...)"
+          <div id="section-work-drive" className="scroll-mt-24">
+            <AnnualWorkDrivePanel
+              value={staff.annualData}
+              editable
+              onChange={(drive: AnnualWorkDrive) => setStaff({ ...staff, annualData: drive })}
             />
-          </section>
+          </div>
         </div>
       </div>
     </div>

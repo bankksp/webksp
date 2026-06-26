@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { useSchoolInfo } from '../hooks/useSchoolInfo';
+import { getSiteLogo } from '../constants/branding';
 
 export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -55,7 +56,7 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
               >
                 <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center overflow-hidden border border-indigo-100 p-0.5">
                   <img 
-                    src={schoolInfo?.logoUrl || "https://s.imgz.io/2026/04/04/ccddd146d75a508fb2.png"} 
+                    src={getSiteLogo(schoolInfo?.logoUrl)} 
                     alt="Logo" 
                     className="w-full h-full object-contain mix-blend-multiply" 
                     referrerPolicy="no-referrer"

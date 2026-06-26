@@ -3,15 +3,10 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { toast } from 'sonner';
 import * as dataService from '../services/dataService';
+import type { SessionUser } from '../lib/auth';
 
-interface User {
+interface User extends SessionUser {
   id: string;
-  email: string;
-  role: string;
-  name?: string;
-  imageUrl?: string;
-  status?: string;
-  idCard?: string;
 }
 
 interface AuthContextType {
@@ -21,6 +16,7 @@ interface AuthContextType {
   register: (data: any) => Promise<boolean>;
   forgotPassword: (idCard: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,17 +31,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const checkMe = async () => {
     try {
-      const currentUser = dataService.getCurrentUser();
-      if (currentUser) {
-        setUser(currentUser);
-      } else {
-        setUser(null);
-      }
+      const refreshed = await dataService.refreshCurrentUser();
+      setUser(refreshed as User | null);
     } catch (error) {
-      setUser(null);
+      const currentUser = dataService.getCurrentUser();
+      setUser(currentUser as User | null);
     } finally {
       setLoading(false);
     }
+  };
+
+  const refreshUser = async () => {
+    const refreshed = await dataService.refreshCurrentUser();
+    setUser(refreshed as User | null);
   };
 
   const login = async (credentials: { email?: string, idCard?: string, password?: string }) => {
@@ -111,7 +109,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, forgotPassword, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, forgotPassword, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -5,14 +5,15 @@ import {
   Image as ImageIcon, X, Save, AlertCircle, Film,
   Globe, Bold, Italic, Heading1, AlignLeft, List, Type,
   Heading2, AlignCenter, AlignRight, AlignJustify, Link,
-  LayoutTemplate
+  LayoutTemplate, MessageCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getPosts, createPost, updatePost, deletePost, getSchoolInfo, getExecutives, uploadFile, getStaff } from '../../services/dataService';
+import { getPosts, createPost, updatePost, deletePost, getSchoolInfo, getExecutives, uploadFile, getStaff, fixDriveUrl } from '../../services/dataService';
 import { FileUpload } from '../../components/FileUpload';
 import { AlbumUpload } from '../../components/AlbumUpload';
 import { Post, MediaItem, SchoolInfo, Executive, Staff } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
+import { SITE_URL } from '../../config';
 import { createExcerpt } from '../../lib/excerpt';
 import { NewsletterTemplate } from '../../components/NewsletterTemplate';
 import { toBlob } from 'html-to-image';
@@ -22,6 +23,25 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
 const ReactQuillAny = ReactQuill as any;
+
+function parseShortIdNumber(shortId?: string): number | null {
+  if (!shortId) return null;
+  if (/^\d+$/.test(shortId)) return parseInt(shortId, 10);
+  const match = shortId.match(/(\d+)$/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+function getNextShortId(posts: Post[]): string {
+  const max = posts.reduce((highest, post) => {
+    const num = parseShortIdNumber(post.shortId);
+    return num !== null && num > highest ? num : highest;
+  }, 0);
+  return String(max + 1);
+}
+
+const DEFAULT_NEWSLETTER_DIRECTOR_NAME = 'นายมีเกียรติ นาสมตรึก';
+const DEFAULT_NEWSLETTER_DIRECTOR_POSITION =
+  'ผู้อำนวยการโรงเรียนกาฬสินธุ์ปัญญานุกูล จังหวัดกาฬสินธุ์';
 
 // Register custom fonts for Quill
 const Quill = ReactQuill.Quill;
@@ -57,6 +77,7 @@ export const PostManager = () => {
     content: string;
     category: 'news' | 'publication' | 'info' | 'activity';
     imageUrl: string;
+    newsletterUrl: string;
     author: string;
     album: MediaItem[];
     driveLink: string;
@@ -69,6 +90,7 @@ export const PostManager = () => {
     content: '',
     category: 'news',
     imageUrl: '',
+    newsletterUrl: '',
     author: 'Admin',
     album: [],
     driveLink: '',
@@ -152,6 +174,7 @@ export const PostManager = () => {
         content: content,
         category: post.category || 'news',
         imageUrl: post.imageUrl || '',
+        newsletterUrl: post.newsletterUrl || '',
         author: post.author || 'Admin',
         album: post.album || [],
         driveLink: post.driveLink || '',
@@ -161,18 +184,17 @@ export const PostManager = () => {
         lineHeight: post.lineHeight || '0'
       });
     } else {
-      // Suggest a shortId like ksp1, ksp2, etc.
-      const nextId = posts.length + 1;
       setEditingPost(null);
       setFormData({
         title: '',
         content: '',
         category: 'news',
         imageUrl: '',
+        newsletterUrl: '',
         author: 'Admin',
         album: [],
         driveLink: '',
-        shortId: `ksp${nextId}`,
+        shortId: getNextShortId(posts),
         imagePosition: 'center',
         fontSize: '2',
         lineHeight: '0'
@@ -216,6 +238,12 @@ export const PostManager = () => {
     }
   };
 
+  const handlePreview = (post: Post) => {
+    const origin = (SITE_URL || window.location.origin).replace(/\/$/, '');
+    const path = post.shortId ? `/${post.shortId}` : `/p/${post.id}`;
+    window.open(`${origin}${path}`, '_blank', 'noopener,noreferrer');
+  };
+
   const handleGenerateNewsletter = () => {
     if (!formData.title) {
       toast.error('กรุณากรอกหัวข้อข่าวสารก่อนสร้างแผ่นข่าว');
@@ -230,9 +258,9 @@ export const PostManager = () => {
     const dirStaff = staff.find(s => s.position && s.position.includes('ผู้อำนวยการ') && !s.position.includes('รอง'));
     const dirExec = executives.find(e => e.position && e.position.includes('ผู้อำนวยการ') && !e.position.includes('รอง'));
     
-    setNewsletterDirectorName(dirStaff?.name || dirExec?.name || '');
+    setNewsletterDirectorName(DEFAULT_NEWSLETTER_DIRECTOR_NAME);
     setNewsletterDirectorImage(dirStaff?.imageUrl || dirExec?.imageUrl || '');
-    setNewsletterDirectorPosition(dirStaff?.position || dirExec?.position || 'ผู้อำนวยการสถานศึกษา');
+    setNewsletterDirectorPosition(DEFAULT_NEWSLETTER_DIRECTOR_POSITION);
     
     setIsNewsletterModalOpen(true);
   };
@@ -257,11 +285,12 @@ export const PostManager = () => {
       // 2. Upload blob
       const file = new File([blob], `newsletter-${Date.now()}.jpg`, { type: 'image/jpeg' });
       const url = await uploadFile(file);
+      const displayUrl = fixDriveUrl(url);
       
-      // 3. Set to formData.imageUrl
-      setFormData(prev => ({ ...prev, imageUrl: url })); // Use as main image as requested
+      // 3. Save as share graphic only — keep uploaded cover in imageUrl
+      setFormData(prev => ({ ...prev, newsletterUrl: displayUrl }));
       
-      toast.success('สร้างแผ่นข่าวและตั้งเป็นรูปหน้าปกสำเร็จ', { id: toastId });
+      toast.success('สร้างแผ่นข่าวสำหรับแชร์สำเร็จ', { id: toastId });
       setIsNewsletterModalOpen(false);
       
     } catch (error: any) {
@@ -390,7 +419,12 @@ export const PostManager = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                        <button className="p-2 text-gray-400 hover:text-indigo-600 transition-colors">
+                        <button
+                          type="button"
+                          onClick={() => handlePreview(post)}
+                          title="ดูตัวอย่างหน้าข่าว"
+                          className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                        >
                           <Eye size={18} />
                         </button>
                         <button 
@@ -486,7 +520,7 @@ export const PostManager = () => {
 
                   <div className="space-y-2 bg-indigo-50/50 p-6 rounded-[2rem] border border-indigo-100/50 flex flex-col justify-between">
                     <label className="text-sm font-bold text-indigo-900 ml-1 flex items-center gap-2">
-                       <Globe size={16} /> Short URL ID (เช่น ksp1)
+                       <Globe size={16} /> Short URL ID (ตัวเลขเรียงลำดับ)
                     </label>
                     <div className="flex items-stretch mt-2 shadow-sm rounded-2xl overflow-hidden border-2 border-indigo-100 group-focus-within:border-indigo-500 transition-all">
                       <div className="bg-white border-r border-indigo-100 px-4 flex items-center text-indigo-300 font-bold text-xs whitespace-nowrap overflow-hidden max-w-[150px] md:max-w-none">
@@ -494,9 +528,11 @@ export const PostManager = () => {
                       </div>
                       <input 
                         type="text" 
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         value={formData.shortId}
-                        onChange={(e) => setFormData({...formData, shortId: e.target.value.toLowerCase().replace(/[^a-z0-9\u0E00-\u0E7F_-]/g, '-')})}
-                        placeholder="ksp1 หรือ ชื่อข่าว"
+                        onChange={(e) => setFormData({...formData, shortId: e.target.value.replace(/\D/g, '')})}
+                        placeholder={getNextShortId(posts)}
                         className="flex-1 px-4 py-4 bg-white border-none focus:ring-0 transition-all font-bold text-indigo-900"
                       />
                     </div>
@@ -506,60 +542,150 @@ export const PostManager = () => {
                       </p>
                     )}
                     <p className="text-[10px] text-indigo-300 ml-1 mt-1">
-                      ระบุ ID สั้นๆ เช่น ksp1, ksp-news-01
+                      ระบบกำหนดเลขถัดไปอัตโนมัติ เช่น 31, 32, 33
                     </p>
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
-                    <div className="flex justify-between items-center bg-indigo-50/50 p-4 rounded-xl mb-2">
+                    <div className="p-6 rounded-[2rem] border-2 border-indigo-100 bg-indigo-50/30 space-y-4">
                       <div>
-                        <h4 className="font-bold text-indigo-900">แผ่นประชาสัมพันธ์ข่าว (Newsletter A4)</h4>
-                        <p className="text-xs text-indigo-700/70">สร้างกราฟิกอัตโนมัติพร้อมผู้บริหาร เพื่อใช้เป็นปกแชร์ Facebook / LINE</p>
+                        <h4 className="font-bold text-indigo-900 flex items-center gap-2">
+                          <ImageIcon size={16} /> รูปหน้าปกเว็บไซต์
+                        </h4>
+                        <p className="text-xs text-indigo-700/70 mt-1">
+                          ใช้แสดงในการ์ดข่าวหน้าแรก และแบนเนอร์ด้านบนหน้าบทความ — ไม่ใช้ตอนแชร์ Facebook / LINE
+                        </p>
                       </div>
-                      <button 
-                        type="button" 
-                        onClick={handleGenerateNewsletter}
-                        className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-indigo-700 transition"
-                      >
-                        <LayoutTemplate size={16} />
-                        สร้างรูปแผ่นข่าวอัตโนมัติ
-                      </button>
+
+                      <FileUpload 
+                        label="อัปโหลดรูปหน้าปก"
+                        currentImageUrl={formData.imageUrl}
+                        onUploadSuccess={(url) => setFormData(prev => ({...prev, imageUrl: url}))}
+                      />
+
+                      <div className="flex flex-col md:flex-row gap-4">
+                        <div className="flex-1">
+                          <label className="text-[10px] font-bold text-gray-400 ml-1 uppercase tracking-wider">ตำแหน่งภาพปก</label>
+                          <select 
+                            value={formData.imagePosition}
+                            onChange={(e) => setFormData({...formData, imagePosition: e.target.value})}
+                            className="w-full px-4 py-3 bg-white border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium mt-1"
+                          >
+                            <option value="center">กึ่งกลาง (Center)</option>
+                            <option value="top">ชิดบน (Top)</option>
+                            <option value="bottom">ชิดล่าง (Bottom)</option>
+                            <option value="0% 25%">ค่อนบน (Top 25%)</option>
+                            <option value="0% 75%">ค่อนล่าง (Bottom 75%)</option>
+                          </select>
+                        </div>
+                        <div className="flex-[2]">
+                          <label className="text-[10px] font-bold text-gray-400 ml-1 uppercase tracking-wider">URL รูปปก</label>
+                          <div className="relative mt-1">
+                            <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                            <input 
+                              type="url" 
+                              value={formData.imageUrl}
+                              onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
+                              placeholder="https://..."
+                              className="w-full pl-10 pr-5 py-3 bg-white border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    <FileUpload 
-                      label="รูปภาพหน้าปก / รูปปก Facebook (กดยกเลิกเพื่อเปลี่ยนใหม่)"
-                      currentImageUrl={formData.imageUrl}
-                      onUploadSuccess={(url) => setFormData(prev => ({...prev, imageUrl: url}))}
-                    />
-                    
-                    <div className="flex flex-col md:flex-row gap-4 mt-4">
-                      <div className="flex-1">
-                        <label className="text-[10px] font-bold text-gray-400 ml-1 uppercase tracking-wider">ตำแหน่งภาพ</label>
-                        <select 
-                          value={formData.imagePosition}
-                          onChange={(e) => setFormData({...formData, imagePosition: e.target.value})}
-                          className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium mt-1"
+                    <div className="p-6 rounded-[2rem] border-2 border-emerald-100 bg-emerald-50/30 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                        <div>
+                          <h4 className="font-bold text-emerald-900 flex items-center gap-2">
+                            <LayoutTemplate size={16} /> แผ่นข่าวสำหรับแชร์
+                          </h4>
+                          <p className="text-xs text-emerald-700/70 mt-1">
+                            สร้างจากระบบ หรืออัปโหลดไฟล์ที่ทำเอง — ใช้แชร์ Facebook / LINE (ไม่ใช่รูปปกเว็บ)
+                          </p>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={handleGenerateNewsletter}
+                          className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-emerald-700 transition shrink-0"
                         >
-                          <option value="center">กึ่งกลาง (Center)</option>
-                          <option value="top">ชิดบน (Top)</option>
-                          <option value="bottom">ชิดล่าง (Bottom)</option>
-                          <option value="0% 25%">ค่อนบน (Top 25%)</option>
-                          <option value="0% 75%">ค่อนล่าง (Bottom 75%)</option>
-                        </select>
+                          <LayoutTemplate size={16} />
+                          สร้างจากระบบ
+                        </button>
                       </div>
-                      <div className="flex-[2]">
-                        <label className="text-[10px] font-bold text-gray-400 ml-1 uppercase tracking-wider">URL รูปภาพ</label>
+
+                      <div className="relative py-1">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-emerald-200/80" />
+                        </div>
+                        <p className="relative flex justify-center text-[10px] font-bold uppercase tracking-wider text-emerald-600/80">
+                          <span className="bg-emerald-50/90 px-3">หรืออัปโหลดเอง</span>
+                        </p>
+                      </div>
+
+                      <FileUpload
+                        label="อัปโหลดแผ่นข่าว (JPG, PNG)"
+                        currentImageUrl={formData.newsletterUrl}
+                        onUploadSuccess={(url) =>
+                          setFormData((prev) => ({ ...prev, newsletterUrl: fixDriveUrl(url) }))
+                        }
+                      />
+
+                      <div>
+                        <label className="text-[10px] font-bold text-emerald-700/80 ml-1 uppercase tracking-wider">
+                          หรือวาง URL แผ่นข่าว
+                        </label>
                         <div className="relative mt-1">
-                          <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                          <input 
-                            type="url" 
-                            value={formData.imageUrl}
-                            onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
-                            placeholder="https://example.com/image.jpg"
-                            className="w-full pl-10 pr-5 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
+                          <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-400" size={16} />
+                          <input
+                            type="url"
+                            value={formData.newsletterUrl}
+                            onChange={(e) => setFormData({ ...formData, newsletterUrl: e.target.value })}
+                            placeholder="https://..."
+                            className="w-full pl-10 pr-5 py-3 bg-white border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all text-sm font-medium"
                           />
                         </div>
                       </div>
+
+                      {formData.newsletterUrl ? (
+                        <div className="p-3 bg-white border border-emerald-100 rounded-2xl">
+                          <p className="text-xs font-bold text-emerald-700 mb-2">แผ่นข่าวพร้อมแชร์</p>
+                          <img
+                            src={fixDriveUrl(formData.newsletterUrl)}
+                            alt="แผ่นข่าวแชร์"
+                            className="w-full max-h-80 object-contain rounded-xl bg-gray-50"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              const img = e.currentTarget;
+                              if (!img.dataset.retried && formData.newsletterUrl !== img.src) {
+                                img.dataset.retried = '1';
+                                img.src = formData.newsletterUrl;
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, newsletterUrl: '' }))}
+                            className="mt-2 text-xs text-red-500 font-bold hover:underline"
+                          >
+                            ลบแผ่นข่าว
+                          </button>
+                          {formData.shortId && (
+                            <a
+                              href={`/preview-line?id=${formData.shortId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-3 flex items-center justify-center gap-2 w-full py-2.5 bg-[#06C755] text-white rounded-xl text-xs font-bold hover:bg-[#05b34c] transition-colors"
+                            >
+                              <MessageCircle size={14} /> ดูตัวอย่างแชร์ LINE ก่อน Deploy
+                            </a>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-emerald-600/80 italic">
+                          ยังไม่มีแผ่นข่าว — สร้างจากระบบ หรืออัปโหลดไฟล์ด้านบน
+                        </p>
+                      )}
                     </div>
                   </div>
 
