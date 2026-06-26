@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { 
-  BookOpen, Download, Eye, Calendar, 
-  Search, Filter, FileText, ChevronRight,
+  BookOpen, Search, FileText, Download, Calendar,
   Bookmark, Award, Layout, Book
 } from 'lucide-react';
 import { getInfoDocuments, fixDriveUrl } from '../services/dataService';
 import { InfoDocument } from '../types';
+import { InfoBookshelf } from '../components/InfoBookshelf';
 
 export const Information = () => {
   const { category } = useParams<{ category?: string }>();
@@ -218,95 +218,17 @@ export const Information = () => {
         </div>
       </section>
 
-      {/* Documents Grid */}
+      {/* Bookshelf */}
       <section className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
-            <AnimatePresence mode="popLayout">
-              {filteredDocs.map((doc, idx) => (
-                <motion.div
-                  layout
-                  key={doc.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className="bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all border border-gray-100 group flex flex-col h-full"
-                >
-                  <a 
-                    href={doc.pdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="relative aspect-[3/4] overflow-hidden bg-gray-100 block group/img"
-                  >
-                    <img 
-                      src={getThumbnail(doc)} 
-                      alt={doc.title} 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="absolute top-6 left-6">
-                      <span className={`px-4 py-1.5 backdrop-blur-md text-[10px] font-bold uppercase tracking-widest rounded-full shadow-lg ${
-                        categories.find(c => c.id === doc.category)?.color || 'bg-white/90 text-indigo-600'
-                      }`}>
-                        {categories.find(c => c.id === doc.category)?.name || doc.category}
-                      </span>
-                    </div>
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500">
-                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-indigo-600 shadow-xl hover:scale-110 transition-transform">
-                        <Eye size={28} />
-                      </div>
-                    </div>
-                  </a>
-                  <div className="p-8 flex-1 flex flex-col">
-                    <div className="flex items-center gap-4 text-gray-400 text-[10px] mb-4 font-bold uppercase tracking-widest">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar size={12} className="text-indigo-400" />
-                        <span>{doc.year || new Date(doc.createdAt).getFullYear() + 543}</span>
-                      </div>
-                    </div>
-                    <a 
-                      href={doc.pdfUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xl font-extrabold text-gray-900 mb-4 line-clamp-2 group-hover:text-indigo-600 transition-colors leading-tight block"
-                    >
-                      {doc.title}
-                    </a>
-                    <p className="text-gray-500 text-xs mb-8 line-clamp-2 leading-relaxed flex-1">
-                      {doc.description || 'คลิกเพื่อเปิดอ่านเนื้อหาในรูปแบบไฟล์ PDF'}
-                    </p>
-                    <div className="pt-6 border-t border-gray-50 flex flex-col gap-3">
-                      <a 
-                        href={doc.pdfUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-900/10 group/btn"
-                      >
-                        <FileText size={14} />
-                        เปิดอ่านเอกสาร <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
-                      </a>
-                      <div className="flex items-center justify-end px-1">
-                        <a 
-                          href={doc.pdfUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="p-2 text-gray-400 hover:text-indigo-600 transition-colors flex items-center gap-2 text-[10px] font-bold"
-                          title="เปิดอ่าน PDF"
-                        >
-                          <Download size={18} />
-                          เปิดอ่าน PDF
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-
-          {filteredDocs.length === 0 && (
+          {filteredDocs.length > 0 ? (
+            <InfoBookshelf
+              documents={filteredDocs}
+              categories={categories}
+              categoryTitle={getTitle()}
+              getThumbnail={getThumbnail}
+            />
+          ) : (
             <div className="text-center py-32">
               <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
                 <Bookmark size={48} />
