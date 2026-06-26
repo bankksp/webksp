@@ -8,15 +8,13 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { motion, AnimatePresence } from 'motion/react';
 
-import { useSchoolInfo } from '../hooks/useSchoolInfo';
-import { getSiteLogo } from '../constants/branding';
+import { DEFAULT_SITE_LOGO } from '../constants/branding';
 
 export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { schoolInfo } = useSchoolInfo();
 
   const menuItems = [
     { name: 'แดชบอร์ด', icon: <LayoutDashboard size={20} />, path: '/admin' },
@@ -56,7 +54,7 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
               >
                 <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center overflow-hidden border border-indigo-100 p-0.5">
                   <img 
-                    src={getSiteLogo(schoolInfo?.logoUrl)} 
+                    src={DEFAULT_SITE_LOGO} 
                     alt="Logo" 
                     className="w-full h-full object-contain mix-blend-multiply" 
                     referrerPolicy="no-referrer"

@@ -13,6 +13,7 @@ import { FileUpload } from '@/components/FileUpload';
 import { SchoolInfo } from '@/types';
 import { motion, AnimatePresence } from 'motion/react';
 import { refreshSchoolInfo } from '@/hooks/useSchoolInfo';
+import { DEFAULT_SITE_LOGO } from '@/constants/branding';
 
 const SchoolInfoEditorClient = () => {
   const [info, setInfo] = useState<SchoolInfo>({
@@ -106,11 +107,24 @@ const SchoolInfoEditorClient = () => {
               </div>
 
               <div className="space-y-3">
-                <FileUpload 
-                  label="ตราสัญลักษณ์โรงเรียน (Logo)"
-                  currentImageUrl={info.logoUrl}
-                  onUploadSuccess={(url) => setInfo({...info, logoUrl: url})}
-                />
+                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                  <ImageIcon size={16} className="text-indigo-600" /> ตราสัญลักษณ์โรงเรียน
+                </label>
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                  <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center overflow-hidden border border-indigo-100 p-1 shrink-0">
+                    <img
+                      src={DEFAULT_SITE_LOGO}
+                      alt="ตราสัญลักษณ์โรงเรียน"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-700">ใช้ไฟล์โลโก้มาตรฐานของระบบ</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      แสดงจากไฟล์ <code className="bg-white px-1 rounded">{DEFAULT_SITE_LOGO}</code> — ไม่สามารถอัปโหลดเปลี่ยนได้จากหน้านี้
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
