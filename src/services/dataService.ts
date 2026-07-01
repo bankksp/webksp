@@ -570,11 +570,12 @@ export const uploadFile = async (file: File, options: UploadFileOptions = {}): P
       fileName: processedFile.name
     });
 
-    if (response.success) {
+    const url = response.url || response.data?.url;
+    if (response.success || url) {
       toast.success('อัปโหลดสำเร็จ', { id: toastId });
-      return response.url;
+      return url;
     } else {
-      throw new Error(response.error || 'Upload failed');
+      throw new Error(response.error || response.message || 'Upload failed');
     }
   } catch (error: any) {
     toast.error('เกิดข้อผิดพลาดในการอัปโหลด', { id: toastId, description: error.message });

@@ -27,6 +27,38 @@ function FileIcon({ name, mimeType }: { name: string; mimeType?: string }) {
   return <File size={18} className="text-gray-500" />;
 }
 
+function FolderFilePicker({
+  folderId,
+  uploading,
+  onFiles,
+  className = '',
+  children,
+}: {
+  folderId: string;
+  uploading: boolean;
+  onFiles: (files: FileList | null, folderId: string) => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label
+      className={`relative inline-flex cursor-pointer ${uploading ? 'pointer-events-none opacity-50' : ''} ${className}`}
+    >
+      <input
+        type="file"
+        multiple
+        disabled={uploading}
+        className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+        onChange={(e) => {
+          onFiles(e.target.files, folderId);
+          e.target.value = '';
+        }}
+      />
+      {children}
+    </label>
+  );
+}
+
 export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false, onSave, onChange }) => {
   const parsed = useMemo(() => parseWorkDrive(value), [value]);
   const [drive, setDrive] = useState<AnnualWorkDrive>(parsed.drive);
@@ -35,8 +67,6 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const uploadTargetFolderRef = useRef<string | null>(null);
   const lastSyncedValue = useRef<string>('');
 
   type DialogMode = 'add-year' | 'add-folder' | 'rename-folder' | 'delete-folder';
@@ -71,7 +101,6 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
       if (!years.length) return '';
       return prev;
     });
-    setOpenFolderId(null);
     setDirty(false);
   }, [value, dirty]);
 
@@ -153,7 +182,7 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
   };
 
   const handleUpload = async (files: FileList | null, targetFolderId?: string) => {
-    const folderId = targetFolderId || uploadTargetFolderRef.current || openFolderId;
+    const folderId = targetFolderId || openFolderId;
     if (!files?.length || !selectedYear || !folderId || uploading) {
       if (!folderId && files?.length) {
         toast.error('กรุณาเลือกโฟลเดอร์ก่อนอัปโหลด');
@@ -212,14 +241,7 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
       }
     } finally {
       setUploading(false);
-      uploadTargetFolderRef.current = null;
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  };
-
-  const triggerUpload = (folderId: string) => {
-    uploadTargetFolderRef.current = folderId;
-    fileInputRef.current?.click();
   };
 
   const handleSave = async () => {
@@ -267,16 +289,6 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
           <p className="font-bold mb-1">ข้อมูลเดิม</p>
           {parsed.legacyNote}
         </div>
-      )}
-
-      {editable && selectedYear && (
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={(e) => handleUpload(e.target.files)}
-        />
       )}
 
       <div className="flex flex-wrap items-center gap-2 mb-6">
@@ -362,18 +374,14 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
                   </button>
                   {editable && (
                     <div className="absolute top-4 right-4 flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          triggerUpload(folder.id);
-                        }}
-                        disabled={uploading}
-                        className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-lg disabled:opacity-50"
-                        title="อัปโหลดไฟล์"
+                      <FolderFilePicker
+                        folderId={folder.id}
+                        uploading={uploading}
+                        onFiles={handleUpload}
+                        className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-lg"
                       >
                         <Upload size={15} />
-                      </button>
+                      </FolderFilePicker>
                       <button
                         type="button"
                         onClick={(e) => {
@@ -453,15 +461,15 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
                 handleUpload(e.dataTransfer.files, openFolder.id);
               }}
             >
-              <button
-                type="button"
-                onClick={() => triggerUpload(openFolder.id)}
-                disabled={uploading}
-                className="inline-flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 disabled:opacity-50"
+              <FolderFilePicker
+                folderId={openFolder.id}
+                uploading={uploading}
+                onFiles={handleUpload}
+                className="inline-flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700"
               >
                 <Upload size={18} />
                 {uploading ? 'กำลังอัปโหลด…' : 'อัปโหลดไฟล์'}
-              </button>
+              </FolderFilePicker>
               <p className="text-xs text-gray-500 mt-3">
                 ลากไฟล์มาวางที่นี่ หรือกดปุ่มด้านบน — รูปภาพ วิดีโอ PDF Word Excel และไฟล์อื่นๆ
               </p>

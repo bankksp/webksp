@@ -672,6 +672,10 @@ export const StaffEdit = () => {
               value={staff.annualData}
               editable
               onChange={(drive: AnnualWorkDrive) => setStaff({ ...staff, annualData: drive })}
+              onSave={async (drive: AnnualWorkDrive) => {
+                if (!staff.id) return;
+                await updateStaff(staff.id, { annualData: drive });
+              }}
             />
           </div>
         </div>
