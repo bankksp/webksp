@@ -99,6 +99,9 @@ function doPost(e) {
   }
 
   if (action === "upload") {
+    if (postData.uploadId !== undefined && postData.chunkIndex !== undefined) {
+      return handleUploadChunk(postData);
+    }
     return handleUpload(postData);
   }
 
@@ -349,10 +352,17 @@ function handleSet(sheet, data) {
 
 function handleUpload(postData) {
   const { base64Data, contentType, fileName } = postData;
+
+  if (!base64Data) {
+    return createResponse({ error: "ไม่พบข้อมูลไฟล์ — กรุณาเลือกไฟล์แล้วลองใหม่" });
+  }
+  if (!fileName) {
+    return createResponse({ error: "ไม่พบชื่อไฟล์" });
+  }
   
   try {
     const decoded = Utilities.base64Decode(base64Data);
-    const blob = Utilities.newBlob(decoded, contentType, fileName);
+    const blob = Utilities.newBlob(decoded, contentType || "application/octet-stream", fileName);
     
     let folder;
     if (FOLDER_ID) {
@@ -368,7 +378,92 @@ function handleUpload(postData) {
     
     return createResponse({ success: true, url: url });
   } catch (err) {
-    return createResponse({ error: err.message });
+    var msg = String(err.message || err);
+    if (msg.indexOf("DriveApp") !== -1) {
+      return createResponse({
+        error: "ไม่มีสิทธิ์ Google Drive — เปิด code.gs แล้วรัน initScript() จากนั้น Deploy Web App ใหม่"
+      });
+    }
+    return createResponse({ error: "อัปโหลดไม่สำเร็จ: " + msg });
+  }
+}
+
+var CHUNK_TEMP_PREFIX = "__chunk__";
+
+function getTempUploadFolder() {
+  var parent = FOLDER_ID ? DriveApp.getFolderById(FOLDER_ID) : DriveApp.getRootFolder();
+  var name = "_upload_chunks";
+  var it = parent.getFoldersByName(name);
+  if (it.hasNext()) return it.next();
+  return parent.createFolder(name);
+}
+
+function trashFilesByName(folder, name) {
+  var it = folder.getFilesByName(name);
+  while (it.hasNext()) {
+    it.next().setTrashed(true);
+  }
+}
+
+function handleUploadChunk(postData) {
+  var uploadId = String(postData.uploadId || "");
+  var chunkIndex = Number(postData.chunkIndex);
+  var totalChunks = Number(postData.totalChunks);
+  var base64Data = postData.base64Data;
+  var contentType = postData.contentType || "application/octet-stream";
+  var fileName = postData.fileName || "upload";
+
+  if (!uploadId || isNaN(chunkIndex) || isNaN(totalChunks) || totalChunks < 1 || !base64Data) {
+    return createResponse({ error: "ข้อมูลชิ้นส่วนไฟล์ไม่ครบ" });
+  }
+
+  try {
+    var tempFolder = getTempUploadFolder();
+    var chunkName = CHUNK_TEMP_PREFIX + uploadId + "_" + chunkIndex;
+    trashFilesByName(tempFolder, chunkName);
+
+    var chunkBlob = Utilities.newBlob(
+      Utilities.base64Decode(base64Data),
+      "application/octet-stream",
+      chunkName
+    );
+    tempFolder.createFile(chunkBlob);
+
+    if (chunkIndex < totalChunks - 1) {
+      return createResponse({ success: true, done: false, chunkIndex: chunkIndex });
+    }
+
+    var allBytes = [];
+    for (var i = 0; i < totalChunks; i++) {
+      var files = tempFolder.getFilesByName(CHUNK_TEMP_PREFIX + uploadId + "_" + i);
+      if (!files.hasNext()) {
+        return createResponse({ error: "ชิ้นส่วนไฟล์หายไป กรุณาอัปโหลดใหม่" });
+      }
+      var bytes = files.next().getBlob().getBytes();
+      for (var j = 0; j < bytes.length; j++) {
+        allBytes.push(bytes[j]);
+      }
+    }
+
+    var destFolder = FOLDER_ID ? DriveApp.getFolderById(FOLDER_ID) : DriveApp.getRootFolder();
+    var finalBlob = Utilities.newBlob(allBytes, contentType, fileName);
+    var file = destFolder.createFile(finalBlob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    for (var k = 0; k < totalChunks; k++) {
+      trashFilesByName(tempFolder, CHUNK_TEMP_PREFIX + uploadId + "_" + k);
+    }
+
+    var url = "https://drive.google.com/uc?export=view&id=" + file.getId();
+    return createResponse({ success: true, done: true, url: url });
+  } catch (err) {
+    var msg = String(err.message || err);
+    if (msg.indexOf("DriveApp") !== -1) {
+      return createResponse({
+        error: "ไม่มีสิทธิ์ Google Drive — เปิด code.gs แล้วรัน initScript() จากนั้น Deploy Web App ใหม่"
+      });
+    }
+    return createResponse({ error: "อัปโหลดไฟล์ใหญ่ไม่สำเร็จ: " + msg });
   }
 }
 

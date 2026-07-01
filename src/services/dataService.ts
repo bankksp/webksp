@@ -1,5 +1,6 @@
 import { resolveAdminRole, type SessionUser } from '../lib/auth';
 import * as bcrypt from 'bcryptjs';
+import imageCompression from 'browser-image-compression';
 import { Staff, Post, Executive, InfoDocument } from '../types';
 import { API_URL } from '../config';
 import {
@@ -479,10 +480,13 @@ export const forgotPassword = async (idCard: string) => {
 };
 
 // --- File Upload & Base64 Helper ---
-const fileToBase64 = (file: File): Promise<string> => {
+const GAS_SINGLE_UPLOAD_MAX_BYTES = 3 * 1024 * 1024;
+const GAS_CHUNK_BYTES = 1.5 * 1024 * 1024;
+
+const blobToBase64 = (blob: Blob): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(blob);
     reader.onload = () => {
       const result = reader.result as string;
       resolve(result.split(',')[1]);
@@ -491,54 +495,77 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
-const compressImage = async (file: File, maxSizeMB: number = 0.8): Promise<File> => {
-  if (!file.type.startsWith('image/')) return file;
-  if (file.size < maxSizeMB * 1024 * 1024) return file; 
-  
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        
-        const MAX_DIM = 1200;
-        if (width > height) {
-          if (width > MAX_DIM) {
-            height *= MAX_DIM / width;
-            width = MAX_DIM;
-          }
-        } else {
-          if (height > MAX_DIM) {
-            width *= MAX_DIM / height;
-            height = MAX_DIM;
-          }
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return resolve(file);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        canvas.toBlob((blob) => {
-          if (blob) {
-            resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: 'image/jpeg' }));
-          } else {
-            resolve(file); 
-          }
-        }, 'image/jpeg', 0.6); 
-      };
-      img.onerror = () => resolve(file);
-    };
-    reader.onerror = () => resolve(file);
-  });
+const fileToBase64 = (file: Blob): Promise<string> => blobToBase64(file);
+
+const isImageFile = (file: File): boolean => {
+  const name = file.name.toLowerCase();
+  return (
+    file.type.startsWith('image/') ||
+    name.endsWith('.heic') ||
+    name.endsWith('.heif') ||
+    name.endsWith('.hevc')
+  );
+};
+
+const compressImage = async (file: File, maxSizeMB: number = 2): Promise<File> => {
+  if (!isImageFile(file)) return file;
+
+  try {
+    const compressed = await imageCompression(file, {
+      maxSizeMB,
+      maxWidthOrHeight: 1920,
+      useWebWorker: true,
+      initialQuality: 0.82,
+      fileType: 'image/jpeg',
+    });
+    const fileName = file.name.replace(/\.(heic|heif|hevc)$/i, '.jpg');
+    return new File([compressed], fileName, { type: 'image/jpeg' });
+  } catch {
+    return file;
+  }
+};
+
+const resolveContentType = (file: File): string => {
+  if (file.type) return file.type;
+  const lower = file.name.toLowerCase();
+  if (lower.endsWith('.pdf')) return 'application/pdf';
+  if (lower.endsWith('.doc')) return 'application/msword';
+  if (lower.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  if (lower.endsWith('.xls')) return 'application/vnd.ms-excel';
+  if (lower.endsWith('.xlsx')) return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  return 'application/octet-stream';
+};
+
+const parseUploadResponse = (response: any): string => {
+  const url = response?.url || response?.data?.url;
+  if (response?.success || url) return url;
+  throw new Error(response?.error || response?.message || 'Upload failed');
+};
+
+const uploadLargeFile = async (file: File, contentType: string): Promise<string> => {
+  const uploadId = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  const totalChunks = Math.ceil(file.size / GAS_CHUNK_BYTES);
+  let lastUrl = '';
+
+  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+    const start = chunkIndex * GAS_CHUNK_BYTES;
+    const chunk = file.slice(start, start + GAS_CHUNK_BYTES);
+    const base64Data = await blobToBase64(chunk);
+    const response = await fetchAPI({
+      action: 'upload',
+      uploadId,
+      chunkIndex,
+      totalChunks,
+      base64Data,
+      contentType,
+      fileName: file.name,
+    });
+    if (response?.url) lastUrl = response.url;
+    if (response?.done && response?.url) lastUrl = response.url;
+  }
+
+  if (!lastUrl) throw new Error('อัปโหลดไฟล์ใหญ่ไม่สำเร็จ — ต้อง Deploy code.gs เวอร์ชันล่าสุด');
+  return lastUrl;
 };
 
 export interface UploadFileOptions {
@@ -552,31 +579,33 @@ export const uploadFile = async (file: File, options: UploadFileOptions = {}): P
   const toastId = toast.loading(`กำลังอัปโหลด ${file.name}...`);
 
   try {
-    const processedFile = compressImages ? await compressImage(file, 0.8) : file;
-    const base64Data = await fileToBase64(processedFile);
+    const processedFile = compressImages ? await compressImage(file, 2) : file;
+    const contentType = resolveContentType(processedFile);
 
     if (maxSizeMB != null) {
-      const isPdf = processedFile.type === 'application/pdf' || processedFile.name.toLowerCase().endsWith('.pdf');
+      const isPdf = contentType === 'application/pdf' || processedFile.name.toLowerCase().endsWith('.pdf');
       const sizeInMB = processedFile.size / (1024 * 1024);
       if (!isPdf && sizeInMB > maxSizeMB) {
         throw new Error(`ไฟล์มีขนาดใหญ่เกินไป (${sizeInMB.toFixed(1)}MB) กรุณาใช้ไฟล์ขนาดไม่เกิน ${maxSizeMB}MB`);
       }
     }
 
-    const response = await fetchAPI({
-      action: 'upload',
-      base64Data,
-      contentType: processedFile.type || (processedFile.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream'),
-      fileName: processedFile.name
-    });
-
-    const url = response.url || response.data?.url;
-    if (response.success || url) {
-      toast.success('อัปโหลดสำเร็จ', { id: toastId });
-      return url;
+    let url: string;
+    if (processedFile.size > GAS_SINGLE_UPLOAD_MAX_BYTES) {
+      url = await uploadLargeFile(processedFile, contentType);
     } else {
-      throw new Error(response.error || response.message || 'Upload failed');
+      const base64Data = await fileToBase64(processedFile);
+      const response = await fetchAPI({
+        action: 'upload',
+        base64Data,
+        contentType,
+        fileName: processedFile.name,
+      });
+      url = parseUploadResponse(response);
     }
+
+    toast.success('อัปโหลดสำเร็จ', { id: toastId });
+    return url;
   } catch (error: any) {
     toast.error('เกิดข้อผิดพลาดในการอัปโหลด', { id: toastId, description: error.message });
     throw error;

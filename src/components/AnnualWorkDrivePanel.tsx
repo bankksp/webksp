@@ -27,35 +27,33 @@ function FileIcon({ name, mimeType }: { name: string; mimeType?: string }) {
   return <File size={18} className="text-gray-500" />;
 }
 
-function FolderFilePicker({
+function UploadFileInput({
   folderId,
   uploading,
   onFiles,
-  className = '',
-  children,
+  compact = false,
 }: {
   folderId: string;
   uploading: boolean;
   onFiles: (files: FileList | null, folderId: string) => void;
-  className?: string;
-  children: React.ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <label
-      className={`relative inline-flex cursor-pointer ${uploading ? 'pointer-events-none opacity-50' : ''} ${className}`}
-    >
-      <input
-        type="file"
-        multiple
-        disabled={uploading}
-        className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-        onChange={(e) => {
-          onFiles(e.target.files, folderId);
-          e.target.value = '';
-        }}
-      />
-      {children}
-    </label>
+    <input
+      type="file"
+      multiple
+      accept="image/*,video/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+      disabled={uploading}
+      onChange={(e) => {
+        onFiles(e.target.files, folderId);
+        e.target.value = '';
+      }}
+      className={
+        compact
+          ? 'absolute inset-0 z-20 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed'
+          : 'block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 file:cursor-pointer disabled:opacity-50'
+      }
+    />
   );
 }
 
@@ -374,14 +372,15 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
                   </button>
                   {editable && (
                     <div className="absolute top-4 right-4 flex items-center gap-1">
-                      <FolderFilePicker
-                        folderId={folder.id}
-                        uploading={uploading}
-                        onFiles={handleUpload}
-                        className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-lg"
-                      >
+                      <div className="relative w-9 h-9 text-indigo-600 hover:bg-indigo-100 rounded-lg flex items-center justify-center">
                         <Upload size={15} />
-                      </FolderFilePicker>
+                        <UploadFileInput
+                          folderId={folder.id}
+                          uploading={uploading}
+                          onFiles={handleUpload}
+                          compact
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={(e) => {
@@ -447,7 +446,7 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
 
           {editable && (
             <div
-              className="mb-5 p-6 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 text-center"
+              className="mb-5 p-6 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40"
               onDragOver={(e) => {
                 e.preventDefault();
                 e.currentTarget.classList.add('border-indigo-400', 'bg-indigo-50');
@@ -461,17 +460,17 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
                 handleUpload(e.dataTransfer.files, openFolder.id);
               }}
             >
-              <FolderFilePicker
-                folderId={openFolder.id}
-                uploading={uploading}
-                onFiles={handleUpload}
-                className="inline-flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700"
-              >
-                <Upload size={18} />
-                {uploading ? 'กำลังอัปโหลด…' : 'อัปโหลดไฟล์'}
-              </FolderFilePicker>
-              <p className="text-xs text-gray-500 mt-3">
-                ลากไฟล์มาวางที่นี่ หรือกดปุ่มด้านบน — รูปภาพ วิดีโอ PDF Word Excel และไฟล์อื่นๆ
+              {uploading ? (
+                <p className="text-center text-sm font-bold text-indigo-600 py-3">กำลังอัปโหลด…</p>
+              ) : (
+                <UploadFileInput
+                  folderId={openFolder.id}
+                  uploading={uploading}
+                  onFiles={handleUpload}
+                />
+              )}
+              <p className="text-xs text-gray-500 mt-3 text-center">
+                กดปุ่มด้านบนเพื่อเลือกไฟล์ หรือลากมาวาง — รูป วิดีโอ PDF Word Excel (ไฟล์ใหญ่รองรับหลัง Deploy code.gs)
               </p>
             </div>
           )}
