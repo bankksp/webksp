@@ -650,15 +650,15 @@ export const StaffProfile = () => {
                       <div className="h-px flex-1 bg-gradient-to-r from-gray-100 to-transparent" />
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-3 md:grid-cols-2 gap-2 sm:gap-4 md:gap-8">
                       {groupedCertificates[year].map((cert, idx) => (
                         <motion.div 
                           key={cert.id || `cert-${year}-${idx}-${cert.title}`}
                           whileHover={{ y: -8, scale: 1.02 }}
                           onClick={() => setSelectedCert(cert)}
-                          className="bg-white rounded-[2rem] overflow-hidden border border-gray-100 cursor-pointer group hover:shadow-2xl transition-all duration-500"
+                          className="bg-white rounded-xl md:rounded-[2rem] overflow-hidden border border-gray-100 cursor-pointer group hover:shadow-2xl transition-all duration-500"
                         >
-                          <div className="aspect-[4/3] relative overflow-hidden bg-gray-50">
+                          <div className="aspect-[3/4] md:aspect-[4/3] relative overflow-hidden bg-gray-50">
                             {cert.imageUrl ? (
                               <img 
                                 src={cert.imageUrl} 
@@ -669,33 +669,33 @@ export const StaffProfile = () => {
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-gray-200">
-                                <ImageIcon size={64} />
+                                <ImageIcon className="w-8 h-8 md:w-16 md:h-16" />
                               </div>
                             )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex items-end p-6">
                               <span className="text-white font-bold text-sm flex items-center gap-2">
                                 คลิกเพื่อขยาย <ExternalLink size={16} />
                               </span>
                             </div>
                             {cert.date && (
-                              <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-black text-gray-600 shadow-sm">
+                              <div className="absolute top-1 left-1 md:top-4 md:left-4 bg-white/90 backdrop-blur-sm px-1.5 py-0.5 md:px-3 md:py-1 rounded-full text-[8px] md:text-[10px] font-black text-gray-600 shadow-sm">
                                 {new Date(cert.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
                               </div>
                             )}
                             {cert.level && (
-                              <div className="absolute top-4 right-4 bg-indigo-600/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-black text-white shadow-sm">
+                              <div className="absolute top-1 right-1 md:top-4 md:right-4 bg-indigo-600/90 backdrop-blur-sm px-1.5 py-0.5 md:px-3 md:py-1 rounded-full text-[7px] md:text-[10px] font-black text-white shadow-sm max-w-[70%] truncate">
                                 {achievementLevelLabel(cert.level)}
                               </div>
                             )}
                             {cert.assessmentRound && (
-                              <div className="absolute bottom-4 right-4 bg-orange-500/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-black text-white shadow-sm">
-                                รอบที่ {cert.assessmentRound}
+                              <div className="absolute bottom-1 right-1 md:bottom-4 md:right-4 bg-orange-500/90 backdrop-blur-sm px-1.5 py-0.5 md:px-3 md:py-1 rounded-full text-[7px] md:text-[10px] font-black text-white shadow-sm">
+                                รอบ {cert.assessmentRound}
                               </div>
                             )}
                           </div>
-                          <div className="p-6">
-                            <h4 className={`font-bold text-gray-900 mb-3 line-clamp-2 transition-colors leading-tight text-lg group-hover:${themeTextClass}`} style={getThemeStyle('text')}>{cert.title}</h4>
-                            <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                          <div className="p-2 md:p-6">
+                            <h4 className={`font-bold text-gray-900 mb-1 md:mb-3 line-clamp-2 transition-colors leading-tight text-[10px] md:text-lg group-hover:${themeTextClass}`} style={getThemeStyle('text')}>{cert.title}</h4>
+                            <div className="hidden md:flex items-center justify-between pt-4 border-t border-gray-50">
                               <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                 <Building2 size={14} className="text-indigo-400" /> {cert.organizer}
                               </div>
