@@ -6,6 +6,7 @@ import { getAllStaff } from '../services/dataService';
 import { Staff, Certificate } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { Link, useNavigate } from 'react-router-dom';
+import { pullCertificatesFromKsp } from '../lib/kspManagementSync';
 
 interface EnhancedCertificate extends Certificate {
   staffName: string;
@@ -32,19 +33,25 @@ export const Portfolio = () => {
         const staffData = await getAllStaff();
         const certs: EnhancedCertificate[] = [];
         
-        staffData.forEach(staff => {
-          if (staff.certificates && Array.isArray(staff.certificates)) {
-            staff.certificates.forEach(cert => {
-              certs.push({
-                ...cert,
-                staffName: staff.name,
-                staffId: staff.id || '',
-                staffType: staff.type,
-                staffDepartment: staff.department
-              });
-            });
+        for (const staff of staffData) {
+          let staffCerts = staff.certificates || [];
+          if (staff.idCard) {
+            try {
+              staffCerts = await pullCertificatesFromKsp(staffCerts, staff.idCard);
+            } catch {
+              // ใช้ข้อมูลในเว็บไซต์ถ้าซิงค์ไม่ได้
+            }
           }
-        });
+          staffCerts.forEach(cert => {
+            certs.push({
+              ...cert,
+              staffName: staff.name,
+              staffId: staff.id || '',
+              staffType: staff.type,
+              staffDepartment: staff.department
+            });
+          });
+        }
         
         // Sort by year desc, then title
         certs.sort((a, b) => {

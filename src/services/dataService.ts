@@ -541,18 +541,26 @@ const compressImage = async (file: File, maxSizeMB: number = 0.8): Promise<File>
   });
 };
 
-export const uploadFile = async (file: File): Promise<string> => {
+export interface UploadFileOptions {
+  /** null = ไม่จำกัดขนาดฝั่ง client */
+  maxSizeMB?: number | null;
+  compressImages?: boolean;
+}
+
+export const uploadFile = async (file: File, options: UploadFileOptions = {}): Promise<string> => {
+  const { maxSizeMB = 20, compressImages = true } = options;
   const toastId = toast.loading(`กำลังอัปโหลด ${file.name}...`);
 
   try {
-    const processedFile = await compressImage(file, 0.8); // Compress if > 0.8MB
+    const processedFile = compressImages ? await compressImage(file, 0.8) : file;
     const base64Data = await fileToBase64(processedFile);
-    
-    // Safety check for Request Entity Too Large (Allow up to 20MB for Google Apps Script/Drive, bypass for PDFs as requested)
-    const isPdf = processedFile.type === 'application/pdf' || processedFile.name.toLowerCase().endsWith('.pdf');
-    const sizeInMB = processedFile.size / (1024 * 1024);
-    if (!isPdf && sizeInMB > 20) {
-      throw new Error(`ไฟล์มีขนาดใหญ่เกินไป (${sizeInMB.toFixed(1)}MB) กรุณาใช้ไฟล์ขนาดไม่เกิน 20MB`);
+
+    if (maxSizeMB != null) {
+      const isPdf = processedFile.type === 'application/pdf' || processedFile.name.toLowerCase().endsWith('.pdf');
+      const sizeInMB = processedFile.size / (1024 * 1024);
+      if (!isPdf && sizeInMB > maxSizeMB) {
+        throw new Error(`ไฟล์มีขนาดใหญ่เกินไป (${sizeInMB.toFixed(1)}MB) กรุณาใช้ไฟล์ขนาดไม่เกิน ${maxSizeMB}MB`);
+      }
     }
 
     const response = await fetchAPI({

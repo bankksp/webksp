@@ -10,6 +10,7 @@ import { AnnualWorkDrivePanel } from '../components/AnnualWorkDrivePanel';
 import { Staff, Achievement, Activity, Certificate, AnnualWorkDrive } from '../types';
 import { Save, ArrowLeft, Plus, Trash2, User, GraduationCap, Award, Calendar, Info, Settings, Palette, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { syncCertificatesToKsp } from '../lib/kspManagementSync';
 
 export const StaffEdit = () => {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ export const StaffEdit = () => {
   const { user } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const deepLinkHandled = useRef(false);
+  const initialCertsRef = useRef<Certificate[]>([]);
 
   useEffect(() => {
     if (!user) {
@@ -31,6 +33,7 @@ export const StaffEdit = () => {
         const data = await getStaffByUid(user.id, user.email, user.idCard);
         if (data) {
           setStaff(data);
+          initialCertsRef.current = JSON.parse(JSON.stringify(data.certificates || []));
           setIsAdmin(isSiteAdmin(user));
         } else {
           toast.error('ไม่พบข้อมูลบุคลากรที่เชื่อมโยงกับบัญชีนี้');
@@ -111,7 +114,23 @@ export const StaffEdit = () => {
     setSaving(true);
     try {
       const { id, ...updateData } = staff;
-      await updateStaff(id, updateData);
+      let certificates = staff.certificates || [];
+
+      if (staff.idCard) {
+        try {
+          certificates = await syncCertificatesToKsp(
+            certificates,
+            initialCertsRef.current,
+            staff.idCard,
+            staff.name,
+          );
+        } catch (syncError) {
+          console.error('KSP certificate sync failed:', syncError);
+          toast.error('ซิงค์เกียรติบัตรกับ KSP Management ไม่สำเร็จ — บันทึกเฉพาะในเว็บไซต์');
+        }
+      }
+
+      await updateStaff(id, { ...updateData, certificates });
       toast.success('บันทึกข้อมูลเรียบร้อยแล้ว');
       navigate(`/staff/profile/${id}`);
     } catch (error) {
@@ -518,9 +537,14 @@ export const StaffEdit = () => {
           {/* Certificates */}
           <section id="section-certificates" className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 scroll-mt-24">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <Award size={24} className="text-indigo-600" /> เกียรติบัตรและวุฒิบัตร
-              </h2>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <Award size={24} className="text-indigo-600" /> เกียรติบัตรและวุฒิบัตร
+                </h2>
+                {staff.idCard && (
+                  <p className="text-xs text-gray-500 mt-1">บันทึกแล้วจะซิงค์กับ KSP Management อัตโนมัติ</p>
+                )}
+              </div>
               <button 
                 onClick={addCertificate}
                 className="text-indigo-600 hover:bg-indigo-50 p-2 rounded-full transition-colors"
@@ -576,6 +600,30 @@ export const StaffEdit = () => {
                         className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
                         placeholder="0"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">ระดับผลงาน</label>
+                      <select
+                        value={cert.level || 'school'}
+                        onChange={(e) => updateCertificate(idx, { ...cert, level: e.target.value })}
+                        className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                      >
+                        <option value="school">ระดับสถานศึกษา</option>
+                        <option value="district">ระดับเขตพื้นที่</option>
+                        <option value="province">ระดับจังหวัด</option>
+                        <option value="nation">ระดับประเทศ</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">รอบการประเมิน</label>
+                      <select
+                        value={cert.assessmentRound || '1'}
+                        onChange={(e) => updateCertificate(idx, { ...cert, assessmentRound: e.target.value })}
+                        className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                      >
+                        <option value="1">รอบที่ 1</option>
+                        <option value="2">รอบที่ 2</option>
+                      </select>
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">หน่วยงานที่จัด</label>

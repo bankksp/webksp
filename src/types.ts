@@ -54,7 +54,12 @@ export interface Certificate {
   organizer: string;
   description: string;
   imageUrl: string;
-  date?: string; // Added for filtering
+  date?: string;
+  /** ลิงก์กับ Achievements ใน KSP Management / SESMS */
+  kspAchievementId?: number;
+  level?: 'school' | 'district' | 'province' | 'nation' | string;
+  assessmentRound?: string;
+  source?: 'webksp' | 'ksp';
 }
 
 export interface Achievement {

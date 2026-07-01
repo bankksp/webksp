@@ -33,8 +33,10 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [openFolderId, setOpenFolderId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [dirty, setDirty] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastSyncedValue = useRef<string>('');
 
   type DialogMode = 'add-year' | 'add-folder' | 'rename-folder' | 'delete-folder';
   const [dialog, setDialog] = useState<{
@@ -55,17 +57,22 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
   };
 
   useEffect(() => {
+    const serialized = JSON.stringify(value ?? null);
+    if (serialized === lastSyncedValue.current) return;
+    if (dirty) return;
+
+    lastSyncedValue.current = serialized;
     const next = parseWorkDrive(value);
     setDrive(next.drive);
     const years = next.drive.years.map((y) => y.year);
-    if (years.length && !years.includes(selectedYear)) {
-      setSelectedYear(years[0]);
-    } else if (!years.length) {
-      setSelectedYear('');
-    }
+    setSelectedYear((prev) => {
+      if (years.length && !years.includes(prev)) return years[0];
+      if (!years.length) return '';
+      return prev;
+    });
     setOpenFolderId(null);
     setDirty(false);
-  }, [value]);
+  }, [value, dirty]);
 
   const updateDrive = (next: AnnualWorkDrive) => {
     setDrive(next);
@@ -145,30 +152,57 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
   };
 
   const handleUpload = async (files: FileList | null) => {
-    if (!files?.length || !selectedYear || !openFolderId) return;
-    for (const file of Array.from(files)) {
-      try {
-        const url = await uploadFile(file);
-        const entry = {
-          id: createId(),
-          name: file.name,
-          url,
-          mimeType: file.type,
-          size: file.size,
-          uploadedAt: new Date().toISOString(),
-        };
-        setDrive((prev) => {
-          const next = addFileToFolder(prev, selectedYear, openFolderId, entry);
-          onChange?.(next);
-          return next;
-        });
-        setDirty(true);
-      } catch {
-        /* toast ใน uploadFile แล้ว */
+    if (!files?.length || !selectedYear || !openFolderId || uploading) return;
+
+    setUploading(true);
+    let nextDrive = drive;
+    let uploadedCount = 0;
+
+    try {
+      for (const file of Array.from(files)) {
+        try {
+          const url = await uploadFile(file, { maxSizeMB: null, compressImages: true });
+          const entry = {
+            id: createId(),
+            name: file.name,
+            url,
+            mimeType: file.type,
+            size: file.size,
+            uploadedAt: new Date().toISOString(),
+          };
+          nextDrive = addFileToFolder(nextDrive, selectedYear, openFolderId, entry);
+          uploadedCount += 1;
+        } catch {
+          /* toast ใน uploadFile แล้ว */
+        }
       }
+
+      if (uploadedCount > 0) {
+        setDrive(nextDrive);
+        setDirty(true);
+        onChange?.(nextDrive);
+
+        if (onSave) {
+          setSaving(true);
+          try {
+            await onSave(nextDrive);
+            lastSyncedValue.current = JSON.stringify(nextDrive);
+            setDirty(false);
+          } catch {
+            toast.error('อัปโหลดแล้ว แต่บันทึกไม่สำเร็จ — กดบันทึกคลังงานอีกครั้ง');
+          } finally {
+            setSaving(false);
+          }
+        }
+
+        toast.success(`อัปโหลด ${uploadedCount} ไฟล์แล้ว`);
+      } else {
+        toast.error('อัปโหลดไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+      }
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
-    toast.success('อัปโหลดไฟล์แล้ว');
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSave = async () => {
@@ -176,6 +210,7 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
     setSaving(true);
     try {
       await onSave(drive);
+      lastSyncedValue.current = JSON.stringify(drive);
       setDirty(false);
       toast.success('บันทึกคลังงานแล้ว');
     } catch {
@@ -201,7 +236,7 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
           <button
             type="button"
             onClick={handleSave}
-            disabled={saving || !dirty}
+            disabled={saving || uploading || !dirty}
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 disabled:opacity-40 transition-colors"
           >
             <Save size={16} />
@@ -368,11 +403,13 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700"
+                disabled={uploading}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 disabled:opacity-50"
               >
-                <Upload size={16} /> อัปโหลดไฟล์
+                <Upload size={16} />
+                {uploading ? 'กำลังอัปโหลด…' : 'อัปโหลดไฟล์'}
               </button>
-              <p className="text-xs text-gray-400 mt-2">รูปภาพ วิดีโอ PDF Word Excel และไฟล์อื่นๆ (แนะนำไม่เกิน 20MB)</p>
+              <p className="text-xs text-gray-400 mt-2">รูปภาพ วิดีโอ PDF Word Excel และไฟล์อื่นๆ — ไม่จำกัดขนาดไฟล์</p>
             </div>
           )}
 

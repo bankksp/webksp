@@ -14,6 +14,7 @@ import { isSiteAdmin } from './lib/auth';
 import { Home } from './pages/Home';
 import { SharePreview } from './pages/SharePreview';
 import { LineSharePreview } from './pages/LineSharePreview';
+import { KspCertificatePreview } from './pages/KspCertificatePreview';
 import { About } from './pages/About';
 import { Staff } from './pages/Staff';
 import { StaffProfile } from './pages/StaffProfile';
@@ -140,6 +141,7 @@ export default function App() {
             <Route path="/demo" element={<Layout><Home demoMode /></Layout>} />
             <Route path="/preview-share" element={<Layout><SharePreview /></Layout>} />
             <Route path="/preview-line" element={<LineSharePreview />} />
+            <Route path="/preview/ksp-certificates" element={<Layout><KspCertificatePreview /></Layout>} />
             <Route path="/about" element={<Layout><About /></Layout>} />
             <Route path="/about/:section" element={<Layout><About /></Layout>} />
             <Route path="/staff" element={<Layout><Staff /></Layout>} />

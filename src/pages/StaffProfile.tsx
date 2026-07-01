@@ -1,13 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from 'react-helmet-async';
 import { getStaffById, updateStaff } from '../services/dataService';
 import { Staff, Certificate, Activity, AnnualWorkDrive } from '../types';
-import { User, GraduationCap, Award, Calendar, Phone, Mail, ArrowLeft, Edit, Info, ExternalLink, X, Clock, Building2, Image as ImageIcon, Filter, ChevronDown } from 'lucide-react';
+import { User, GraduationCap, Award, Calendar, Phone, Mail, ArrowLeft, Edit, Info, ExternalLink, X, Clock, Building2, Image as ImageIcon, Filter, ChevronDown, RefreshCw, Link2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { AnnualWorkDrivePanel } from '../components/AnnualWorkDrivePanel';
 import { ProfileSectionHeader } from '../components/ProfileSectionHeader';
+import {
+  pullCertificatesFromKsp,
+  findKspPersonnelByIdCard,
+  certificatesFingerprint,
+  achievementLevelLabel,
+} from '../lib/kspManagementSync';
 
 export const StaffProfile = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +34,10 @@ export const StaffProfile = () => {
     startMonth: '1',
     endMonth: '12'
   });
+  const [displayCertificates, setDisplayCertificates] = useState<Certificate[]>([]);
+  const [certSyncing, setCertSyncing] = useState(false);
+  const [kspLinked, setKspLinked] = useState<boolean | null>(null);
+  const certPullDone = useRef(false);
 
   useEffect(() => {
     const fetchStaff = async () => {
@@ -47,6 +57,63 @@ export const StaffProfile = () => {
 
     fetchStaff();
   }, [id]);
+
+  useEffect(() => {
+    certPullDone.current = false;
+    setDisplayCertificates([]);
+    setKspLinked(null);
+  }, [id]);
+
+  useEffect(() => {
+    if (!staff) return;
+    setDisplayCertificates(staff.certificates || []);
+  }, [staff?.id]);
+
+  useEffect(() => {
+    if (!staff?.idCard || certPullDone.current) return;
+
+    let cancelled = false;
+    certPullDone.current = true;
+
+    (async () => {
+      setCertSyncing(true);
+      try {
+        const merged = await pullCertificatesFromKsp(staff.certificates, staff.idCard);
+        if (cancelled) return;
+
+        setDisplayCertificates(merged);
+        const person = await findKspPersonnelByIdCard(staff.idCard);
+        setKspLinked(!!person);
+
+        const ownProfile = currentUser && (
+          staff.uid === currentUser.id ||
+          (staff.email && staff.email === currentUser.email) ||
+          (staff.idCard && staff.idCard === currentUser.idCard)
+        );
+
+        if (
+          ownProfile &&
+          staff.id &&
+          certificatesFingerprint(staff.certificates) !== certificatesFingerprint(merged)
+        ) {
+          await updateStaff(staff.id, { certificates: merged });
+          setStaff((prev) => (prev ? { ...prev, certificates: merged } : prev));
+        }
+      } catch (error) {
+        console.error('KSP certificate sync failed:', error);
+        if (!cancelled) {
+          setDisplayCertificates(staff.certificates || []);
+          setKspLinked(false);
+        }
+      } finally {
+        if (!cancelled) setCertSyncing(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [staff, currentUser]);
 
   useEffect(() => {
     const linkStaff = async () => {
@@ -125,7 +192,7 @@ export const StaffProfile = () => {
   };
 
   const filteredActivities = filterItems(staff.activities || [], activityFilter);
-  const filteredCertificates = filterItems(staff.certificates || [], certFilter);
+  const filteredCertificates = filterItems(displayCertificates, certFilter);
 
   const groupedActivities = filteredActivities.reduce((acc, activity) => {
     const year = activity.fiscalYear || 'ไม่ระบุปี';
@@ -515,6 +582,24 @@ export const StaffProfile = () => {
                 </Link>
               </div>
 
+              {(certSyncing || kspLinked !== null) && (
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  {certSyncing ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-600 font-bold">
+                      <RefreshCw size={12} className="animate-spin" /> กำลังซิงค์กับ KSP Management...
+                    </span>
+                  ) : kspLinked ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 font-bold">
+                      <Link2 size={12} /> เชื่อมกับ KSP Management แล้ว ({displayCertificates.length} รายการ)
+                    </span>
+                  ) : staff.idCard ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 font-bold">
+                      ไม่พบเลขบัตรประชาชนใน KSP Management
+                    </span>
+                  ) : null}
+                </div>
+              )}
+
               {/* Filter Bar */}
               <div className="flex flex-wrap items-center gap-2 bg-gray-50 p-2 rounded-2xl border border-gray-100">
                 <div className="flex items-center gap-2 px-2 text-gray-400">
@@ -527,7 +612,7 @@ export const StaffProfile = () => {
                   className="text-xs font-bold bg-white border border-gray-200 rounded-xl px-3 py-1.5 outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="">ทุกปีงบประมาณ</option>
-                  {Array.from(new Set((staff.certificates || []).map(c => c.fiscalYear).filter(Boolean))).sort().reverse().map(year => (
+                  {Array.from(new Set(displayCertificates.map(c => c.fiscalYear).filter(Boolean))).sort().reverse().map(year => (
                     <option key={year} value={year}>{year}</option>
                   ))}
                 </select>
@@ -595,6 +680,16 @@ export const StaffProfile = () => {
                             {cert.date && (
                               <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-black text-gray-600 shadow-sm">
                                 {new Date(cert.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
+                              </div>
+                            )}
+                            {cert.level && (
+                              <div className="absolute top-4 right-4 bg-indigo-600/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-black text-white shadow-sm">
+                                {achievementLevelLabel(cert.level)}
+                              </div>
+                            )}
+                            {cert.assessmentRound && (
+                              <div className="absolute bottom-4 right-4 bg-orange-500/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-black text-white shadow-sm">
+                                รอบที่ {cert.assessmentRound}
                               </div>
                             )}
                           </div>
@@ -815,6 +910,9 @@ export const StaffProfile = () => {
                     <div>
                       <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">เกียรติบัตร / วุฒิบัตร</p>
                       <p className="text-sm font-bold text-gray-500">ปีงบประมาณ {selectedCert.fiscalYear}</p>
+                      {selectedCert.level && (
+                        <p className="text-xs font-bold text-indigo-600 mt-1">{achievementLevelLabel(selectedCert.level)}</p>
+                      )}
                     </div>
                   </div>
 
