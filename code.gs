@@ -31,9 +31,53 @@ const FOLDER_ID = "17ZSTF_q9yal63BK1UdALLsh7MfYlNUdK";
  * Run this manually in the GAS editor if you get permission errors.
  */
 function initScript() {
-  DriveApp.getRootFolder();
-  SpreadsheetApp.getActiveSpreadsheet();
-  console.log("Authorization successful!");
+  var root = DriveApp.getRootFolder();
+  Logger.log('Root folder OK: ' + root.getName());
+
+  var folder = resolveUploadFolder();
+  Logger.log('Upload folder OK: ' + folder.getName() + ' (id=' + folder.getId() + ')');
+
+  var testBlob = Utilities.newBlob('ksp-upload-test', 'text/plain', 'ksp-init-test.txt');
+  var testFile = folder.createFile(testBlob);
+  testFile.setTrashed(true);
+  Logger.log('Drive upload test OK — อัปโหลดใช้งานได้แล้ว');
+}
+
+function resolveUploadFolder() {
+  if (FOLDER_ID) {
+    try {
+      return DriveApp.getFolderById(FOLDER_ID);
+    } catch (folderErr) {
+      Logger.log('FOLDER_ID access failed: ' + folderErr.message);
+    }
+  }
+
+  var root = DriveApp.getRootFolder();
+  var folderName = 'KSP_Website_Uploads';
+  var folders = root.getFoldersByName(folderName);
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+  return root.createFolder(folderName);
+}
+
+function checkDriveAccess() {
+  try {
+    var folder = resolveUploadFolder();
+    return createResponse({
+      success: true,
+      folderName: folder.getName(),
+      folderId: folder.getId(),
+    });
+  } catch (err) {
+    var msg = String(err.message || err);
+    return createResponse({
+      error: msg.indexOf('DriveApp') !== -1
+        ? 'ไม่มีสิทธิ์ Google Drive — เปิด code.gs แล้วรัน initScript() จากนั้น Deploy Web App ใหม่'
+        : 'ตรวจสอบ Drive ไม่สำเร็จ: ' + msg,
+      needsAuth: true,
+    });
+  }
 }
 
 function doGet(e) {
@@ -103,6 +147,10 @@ function doPost(e) {
       return handleUploadChunk(postData);
     }
     return handleUpload(postData);
+  }
+
+  if (action === "uploadCheck") {
+    return checkDriveAccess();
   }
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -363,14 +411,7 @@ function handleUpload(postData) {
   try {
     const decoded = Utilities.base64Decode(base64Data);
     const blob = Utilities.newBlob(decoded, contentType || "application/octet-stream", fileName);
-    
-    let folder;
-    if (FOLDER_ID) {
-      folder = DriveApp.getFolderById(FOLDER_ID);
-    } else {
-      folder = DriveApp.getRootFolder();
-    }
-    
+    const folder = resolveUploadFolder();
     const file = folder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
@@ -391,7 +432,7 @@ function handleUpload(postData) {
 var CHUNK_TEMP_PREFIX = "__chunk__";
 
 function getTempUploadFolder() {
-  var parent = FOLDER_ID ? DriveApp.getFolderById(FOLDER_ID) : DriveApp.getRootFolder();
+  var parent = resolveUploadFolder();
   var name = "_upload_chunks";
   var it = parent.getFoldersByName(name);
   if (it.hasNext()) return it.next();
@@ -445,7 +486,7 @@ function handleUploadChunk(postData) {
       }
     }
 
-    var destFolder = FOLDER_ID ? DriveApp.getFolderById(FOLDER_ID) : DriveApp.getRootFolder();
+    var destFolder = resolveUploadFolder();
     var finalBlob = Utilities.newBlob(allBytes, contentType, fileName);
     var file = destFolder.createFile(finalBlob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);

@@ -574,6 +574,34 @@ export interface UploadFileOptions {
   compressImages?: boolean;
 }
 
+export async function checkUploadReady(): Promise<{ ok: boolean; message?: string }> {
+  try {
+    await fetchAPI({ action: 'uploadCheck' });
+    return { ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (!message.includes('Invalid action')) {
+      return { ok: false, message: message || 'ระบบอัปโหลดยังไม่พร้อม' };
+    }
+  }
+
+  try {
+    const response = await fetchAPI({
+      action: 'upload',
+      base64Data: btoa('ok'),
+      contentType: 'text/plain',
+      fileName: 'upload-ready-check.txt',
+    });
+    if (response?.success || response?.url) return { ok: true };
+    return { ok: false, message: response?.error || 'อัปโหลดยังไม่พร้อม' };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : 'ระบบอัปโหลดยังไม่พร้อม',
+    };
+  }
+}
+
 export const uploadFile = async (file: File, options: UploadFileOptions = {}): Promise<string> => {
   const { maxSizeMB = 20, compressImages = true } = options;
   const toastId = toast.loading(`กำลังอัปโหลด ${file.name}...`);

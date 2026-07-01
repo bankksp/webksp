@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AnnualWorkDrive } from '../types';
-import { uploadFile, fixDriveUrl } from '../services/dataService';
+import { uploadFile, fixDriveUrl, checkUploadReady } from '../services/dataService';
 import {
   parseWorkDrive, currentBuddhistYear, createId,
   getFileKind, formatFileSize, addYear, addFolder, addFileToFolder,
@@ -65,6 +65,7 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [uploadBlocked, setUploadBlocked] = useState<string | null>(null);
   const lastSyncedValue = useRef<string>('');
 
   type DialogMode = 'add-year' | 'add-folder' | 'rename-folder' | 'delete-folder';
@@ -84,6 +85,20 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
     setDialog({ mode, folderId, defaultValue });
     setDialogInput(defaultValue);
   };
+
+  useEffect(() => {
+    if (!editable) return;
+    let cancelled = false;
+    (async () => {
+      const result = await checkUploadReady();
+      if (!cancelled && !result.ok) {
+        setUploadBlocked(result.message || 'ระบบอัปโหลดยังไม่พร้อม');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [editable]);
 
   useEffect(() => {
     const serialized = JSON.stringify(value ?? null);
@@ -208,7 +223,11 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
           nextDrive = addFileToFolder(nextDrive, selectedYear, folderId, entry);
           uploadedCount += 1;
         } catch (error) {
-          errors.push(error instanceof Error ? error.message : 'อัปโหลดไม่สำเร็จ');
+          const message = error instanceof Error ? error.message : 'อัปโหลดไม่สำเร็จ';
+          errors.push(message);
+          if (message.includes('Drive') || message.includes('drive')) {
+            setUploadBlocked(message);
+          }
         }
       }
 
@@ -286,6 +305,19 @@ export const AnnualWorkDrivePanel: React.FC<Props> = ({ value, editable = false,
         <div className="mb-6 p-4 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-900 whitespace-pre-line">
           <p className="font-bold mb-1">ข้อมูลเดิม</p>
           {parsed.legacyNote}
+        </div>
+      )}
+
+      {uploadBlocked && editable && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-900">
+          <p className="font-bold mb-2">อัปโหลดไม่ได้ — ต้องแก้ Google Apps Script</p>
+          <p className="mb-2">{uploadBlocked}</p>
+          <ol className="list-decimal list-inside space-y-1 text-red-800">
+            <li>เปิด Google Apps Script ของเว็บ ksp.ac.th</li>
+            <li>วาง code.gs ล่าสุดจากโปรเจกต์ webksp</li>
+            <li>รันฟังก์ชัน <strong>initScript()</strong> แล้วอนุญาตสิทธิ์ Drive</li>
+            <li>Deploy → Web App (Execute as: Me, Anyone)</li>
+          </ol>
         </div>
       )}
 
